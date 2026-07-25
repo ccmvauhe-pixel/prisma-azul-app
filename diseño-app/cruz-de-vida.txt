@@ -1,0 +1,42 @@
+25300: Liberar de cualquier enfermedad
+contagiosa.
+29700: Cáncer de colon.
+1577: Cáncer de vejiga.
+1188: Prevenir cáncer.
+2194: Cáncer testicular.
+1577: Cáncer.
+1751: Milagro inesperado rápido en la salud.
+81621: Restaurar el ADN para la salud.
+50: Reconectar el ADN con las doce hebras que
+te ayudan a sanar y restaurar el cuerpo.
+71566: Alcoholismo (sanar)
+464: Autosanación del cuerpo.
+1015: Celos.
+154: Dejar de fumar marihuana.
+811: Sejar de fumar.
+128, sanación a todos los niveles en cuestión de
+la salud.
+25700, para cumplir deseos en la salud o en la
+
+-- 1 of 2 --
+
+mejora de la salud.
+110834, para hacer una sanación a distancia.
+1297, fortalecer la mente.
+34, sanar dolor emocional.
+45600, borrar memorias negativas.
+2516, sanar karmas sexuales.
+1751, milagro inesperado rápido en la salud.
+71566, alcoholismo, liberar.
+464, autosanación del cuerpo.
+554, codependencia, sanar.
+1015, celos, sanar.
+2539, asma, sanar.
+525700, ataques de pánico, sanar.
+122714, drogadicción, sanar.
+1188: Prevenir cáncer
+52569: Resolver problemas en el embarazo
+1449: Disfrutar el embarazo
+
+-- 2 of 2 --
+

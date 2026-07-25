@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="card-data-oscura.js"></script>
+<script src="afirmaciones-data.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0720;font-family:'Hanken Grotesk',sans-serif}
+a{color:#e7cf9b}a:hover{color:#f3ecdc}
+@keyframes afPulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes afBeat{0%,100%{transform:scale(1)}12%{transform:scale(1.09)}24%{transform:scale(1)}36%{transform:scale(1.06)}48%{transform:scale(1)}}
+@keyframes afGlow{0%,100%{box-shadow:0 0 18px rgba(236,200,116,.35)}50%{box-shadow:0 0 36px rgba(236,200,116,.7)}}
+@keyframes afRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.af-scroll::-webkit-scrollbar{display:none}
+</style>
+</helmet>
+<div style="position:relative;min-height:100vh;width:100%;display:flex;justify-content:center;background:radial-gradient(135% 80% at 50% -10%, #241a4f 0%, #150d34 46%, #0a0720 100%)">
+<div style="position:absolute;inset:0;pointer-events:none;opacity:.7;background-image:radial-gradient(1.4px 1.4px at 12% 8%,rgba(255,255,255,.9),transparent),radial-gradient(1px 1px at 28% 18%,rgba(231,207,155,.7),transparent),radial-gradient(1.4px 1.4px at 62% 6%,rgba(255,255,255,.7),transparent),radial-gradient(1px 1px at 82% 14%,rgba(205,189,242,.8),transparent),radial-gradient(1px 1px at 92% 30%,rgba(255,255,255,.6),transparent),radial-gradient(1px 1px at 44% 40%,rgba(255,255,255,.5),transparent),radial-gradient(1px 1px at 6% 56%,rgba(231,207,155,.6),transparent),radial-gradient(1px 1px at 24% 82%,rgba(255,255,255,.5),transparent)"></div>
+
+<div class="af-scroll" style="position:relative;width:100%;max-width:430px;min-height:100vh;display:flex;flex-direction:column;padding:18px 22px 34px">
+
+  <header style="display:flex;align-items:center;gap:12px;padding:6px 0 2px">
+    <div onClick="{{ goBack }}" style="width:44px;height:44px;margin-left:-10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(231,207,155,.85);font-size:22px;font-family:'Cormorant Garamond',serif">‹</div>
+    <div style="flex:1">
+      <div style="font-size:11px;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:rgba(205,189,242,.6)">Cada 24 horas</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:26px;line-height:1.05;color:#e7cf9b">Afirmaciones</div>
+    </div>
+    <div style="{{ pillStyle }}">{{ pillLabel }}</div>
+  </header>
+
+  <sc-if value="{{ isElegir }}" hint-placeholder-val="{{ true }}">
+    <p style="text-align:center;font-size:14px;line-height:1.65;color:rgba(205,189,242,.78);max-width:320px;margin:22px auto 0">Elige el área de tu vida. El universo te entregará la afirmación que tu energía necesita hoy.</p>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:22px">
+      <sc-for list="{{ categorias }}" as="c" hint-placeholder-count="4">
+        <div onClick="{{ c.onPick }}" style="{{ c.style }}">
+          <div style="{{ c.iconStyle }}"></div>
+          <div style="flex:1">
+            <div style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:21px;line-height:1.15;color:#f3ecdc">{{ c.nombre }}</div>
+            <div style="font-size:12px;color:rgba(205,189,242,.65);margin-top:3px;line-height:1.4">{{ c.sub }}</div>
+          </div>
+          <sc-if value="{{ c.soon }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(205,189,242,.6);border:1px solid rgba(205,189,242,.3);border-radius:999px;padding:4px 9px;white-space:nowrap">Próximamente</div>
+          </sc-if>
+          <sc-if value="{{ c.open }}" hint-placeholder-val="{{ true }}">
+            <div style="font-family:'Cormorant Garamond',serif;font-size:24px;color:rgba(231,207,155,.7)">›</div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+    <div style="text-align:center;font-size:11.5px;color:rgba(205,189,242,.45);margin-top:18px">Una afirmación al día · Repítela y hazla tuya ✦</div>
+  </sc-if>
+
+  <sc-if value="{{ isCanalizar }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center">
+      <div style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:26px;color:#f3ecdc;text-align:center">{{ catNombre }}</div>
+      <div style="width:120px;height:120px;margin-top:34px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid rgba(231,207,155,.4);animation:afGlow 2.2s ease-in-out infinite">
+        <div style="{{ canalEmblemStyle }}"></div>
+      </div>
+      <div style="margin-top:32px;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:18px;color:rgba(231,207,155,.9);animation:afPulse 1.6s ease-in-out infinite">Canalizando tu energía…</div>
+      <div style="font-size:12.5px;color:rgba(205,189,242,.6);margin-top:8px">Respira profundo. La palabra correcta viene en camino.</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isRevelar }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+      <div style="margin:18px 0 4px;font-size:11px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:rgba(205,189,242,.55)">Afirmación de {{ catNombre }}</div>
+      <h2 style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:30px;color:#e7cf9b;text-align:center">Tu palabra de hoy</h2>
+      <div style="width:100%;margin-top:22px;position:relative;border-radius:22px;overflow:hidden;border:1px solid rgba(231,207,155,.55);background:linear-gradient(160deg,#2a1f57,#150d34 62%,#0b0726);animation:afRise .6s ease both">
+        <div style="position:absolute;inset:0;opacity:.5;background-image:radial-gradient(1px 1px at 20% 24%,rgba(255,255,255,.8),transparent),radial-gradient(1px 1px at 76% 32%,rgba(231,207,155,.6),transparent),radial-gradient(1px 1px at 38% 70%,rgba(205,189,242,.6),transparent),radial-gradient(1px 1px at 86% 76%,rgba(255,255,255,.5),transparent)"></div>
+        <div style="{{ halo }}"></div>
+        <div style="position:absolute;inset:9px;border:1px solid rgba(231,207,155,.35);border-radius:15px"></div>
+        <div style="position:relative;display:flex;flex-direction:column;align-items:center;padding:32px 26px 30px">
+          <sc-if value="{{ isCorazon }}" hint-placeholder-val="{{ false }}">
+            <div style="width:64px;height:60px;margin:6px 0 4px;animation:afBeat 2.6s ease-in-out infinite">
+              <div style="position:relative;width:44px;height:44px;margin:12px auto 0;transform:rotate(45deg);background:linear-gradient(135deg,#f0b9cd,#e79ab4 55%,#c9769a);border-radius:6px;filter:drop-shadow(0 0 20px rgba(231,154,180,.65))" style-before="content:'';position:absolute;width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#f0b9cd,#e79ab4);top:-22px;left:0" style-after="content:'';position:absolute;width:44px;height:44px;border-radius:50%;background:linear-gradient(180deg,#f0b9cd,#c9769a);top:0;left:-22px"></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ isMoneda }}" hint-placeholder-val="{{ false }}">
+            <div style="position:relative;width:72px;height:72px;margin:2px 0 6px;border-radius:50%;background:radial-gradient(circle at 35% 28%,#f6e2a8,#ecc874 48%,#b98a3e);border:2px solid #f0d488;box-shadow:0 0 26px rgba(236,200,116,.55);display:flex;align-items:center;justify-content:center;animation:afBeat 2.6s ease-in-out infinite" style-before="content:'';position:absolute;inset:6px;border-radius:50%;border:1px solid rgba(28,19,56,.45)">
+              <div style="{{ coinEmblemStyle }}"></div>
+            </div>
+          </sc-if>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:30px;color:rgba(231,207,155,.55);line-height:.6;margin-top:14px">“</div>
+          <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;font-size:24px;line-height:1.45;color:#f3ecdc;text-align:center;text-wrap:pretty;margin-top:4px">{{ afirmacion }}</div>
+          <div style="width:44px;height:1px;background:linear-gradient(90deg,transparent,rgba(231,207,155,.7),transparent);margin-top:18px"></div>
+          <div style="font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:rgba(205,189,242,.55);margin-top:12px">Prisma Azul</div>
+        </div>
+      </div>
+      <div style="font-size:13px;line-height:1.6;color:rgba(205,189,242,.7);margin-top:16px;text-align:center">Repítela hoy, en voz alta o en tu mente,<br>cada vez que tu energía lo pida.</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15.5px;color:rgba(205,189,242,.7);margin-top:10px;text-align:center">Tu próxima afirmación se abrirá en 24 horas.</div>
+      <div style="flex:1"></div>
+      <div onClick="{{ guardar }}" style="width:100%;margin-top:22px;height:54px;border-radius:999px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(135deg,#f0d488,#ecc874 55%,#d9ab55);color:#1c1338;font-weight:700;font-size:15.5px;box-shadow:0 10px 26px rgba(236,200,116,.28)">Guardar en mi camino</div>
+      <div onClick="{{ goBack }}" style="width:100%;margin-top:12px;height:50px;border-radius:999px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(231,207,155,.4);color:#e7cf9b;font-weight:600;font-size:14px">Volver al inicio</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isBloqueado }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+      <div style="width:74px;height:74px;border-radius:50%;margin-top:40px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(231,207,155,.45);animation:afGlow 3.4s ease-in-out infinite">
+        <div style="{{ lockEmblemStyle }}"></div>
+      </div>
+      <div style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:26px;color:#f3ecdc;margin-top:22px;text-align:center">Tu palabra ya fue entregada</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-weight:700;font-size:44px;color:#e7cf9b;margin-top:10px;letter-spacing:.02em">{{ countdown }}</div>
+      <div style="font-size:12.5px;color:rgba(205,189,242,.65);margin-top:6px;text-align:center;line-height:1.6">Una nueva afirmación estará lista entonces.<br>Mientras tanto, repite la de hoy.</div>
+      <sc-if value="{{ lastTexto }}" hint-placeholder-val="{{ false }}">
+        <div style="width:100%;margin-top:26px;border:1px solid rgba(231,207,155,.3);border-radius:16px;padding:18px 20px;background:rgba(21,13,52,.5);text-align:center">
+          <div style="font-size:10.5px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:rgba(231,207,155,.7)">Tu afirmación de hoy · {{ lastCat }}</div>
+          <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:19px;line-height:1.45;color:#f3ecdc;margin-top:8px;text-wrap:pretty">“{{ lastTexto }}”</div>
+        </div>
+      </sc-if>
+      <div style="width:100%;margin-top:22px;border:1px solid rgba(205,189,242,.25);border-radius:16px;overflow:hidden">
+        <div style="display:flex;gap:12px;align-items:center;padding:13px 14px;background:rgba(21,13,52,.6)">
+          <div style="width:34px;height:34px;border-radius:9px;flex:0 0 auto;background:linear-gradient(160deg,#2a1f57,#0b0726);border:1px solid rgba(231,207,155,.5);display:flex;align-items:center;justify-content:center">
+            <div style="{{ notifEmblemStyle }}"></div>
+          </div>
+          <div style="flex:1">
+            <div style="display:flex;justify-content:space-between;gap:8px"><span style="font-size:12.5px;font-weight:700;color:#f3ecdc">Prisma Azul</span><span style="font-size:11px;color:rgba(205,189,242,.5)">mañana 8:00</span></div>
+            <div style="font-size:12.5px;color:rgba(243,236,220,.85);margin-top:1px">✨ Tu afirmación del día te espera.</div>
+          </div>
+        </div>
+        <div onClick="{{ toggleNotif }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;cursor:pointer;border-top:1px solid rgba(205,189,242,.15)">
+          <div style="font-size:13.5px;color:rgba(243,236,220,.9)">Avisarme cada 24 horas</div>
+          <div style="{{ notifTrackStyle }}"><div style="{{ notifKnobStyle }}"></div></div>
+        </div>
+      </div>
+      <div style="flex:1"></div>
+      <div onClick="{{ resetDemo }}" style="margin-top:24px;font-size:12px;color:rgba(205,189,242,.5);cursor:pointer;text-decoration:underline;padding:10px">Restablecer (demo)</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:80;background:rgba(21,13,52,.95);border:1px solid rgba(231,207,155,.5);border-radius:999px;padding:12px 20px;font-size:13px;color:#f3ecdc;box-shadow:0 12px 30px rgba(0,0,0,.5);white-space:nowrap">{{ toast }}</div>
+  </sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;430px&quot;,&quot;height&quot;:&quot;900px&quot;},&quot;ritmoRitual&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;ritual&quot;,&quot;options&quot;:[&quot;ritual&quot;,&quot;ágil&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Ritual&quot;},&quot;estadoInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;auto&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;desbloqueado&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Estado&quot;}}">
+class Component extends DCLogic {
+  state = { step:'elegir', cat:null, idx:null, unlockAt:null, now:Date.now(), notif:true, toast:null };
+  timers = [];
+  componentDidMount() {
+    if (typeof window !== 'undefined' && (!window.AFIRMACIONES_DATA || !window.CARD_OSCURA)) {
+      const t = setInterval(() => { if (window.AFIRMACIONES_DATA && window.CARD_OSCURA) { clearInterval(t); this.forceUpdate(); } }, 60);
+      setTimeout(() => clearInterval(t), 4000);
+    }
+    try {
+      const lock = localStorage.getItem('pa_afirmacion_lock');
+      if (lock && Number(lock) > Date.now() && this.props.estadoInicial !== 'desbloqueado') {
+        this.setState({ step:'bloqueado', unlockAt:Number(lock) });
+      }
+    } catch(e){}
+    this.tick = setInterval(() => { if (this.state.step==='bloqueado') this.setState({now:Date.now()}); }, 1000);
+  }
+  componentWillUnmount() { this.timers.forEach(clearTimeout); clearInterval(this.tick); }
+  after(ms, fn) { this.timers.push(setTimeout(fn, ms)); }
+  data() { return (typeof window!=='undefined' && window.AFIRMACIONES_DATA) || {categorias:[]}; }
+  catSel() { return this.data().categorias.find(c=>c.key===this.state.cat); }
+  emblemStyle(palo, size, extra) {
+    const CO = (typeof window!=='undefined' && window.CARD_OSCURA) || {};
+    const uri = CO[palo] || CO['oros'] || '';
+    return uri ? Object.assign({width:size,height:size,backgroundImage:'url("'+uri+'")',backgroundSize:'contain',backgroundRepeat:'no-repeat',backgroundPosition:'center'}, extra||{}) : {display:'none'};
+  }
+  renderVals() {
+    const D = this.data(), st = this.state;
+    const agil = this.props.ritmoRitual === 'ágil';
+
+    const categorias = D.categorias.map(c => ({
+      nombre:c.nombre, sub: c.proximamente ? 'Muy pronto · '+c.sub : c.sub,
+      soon: !!c.proximamente, open: !c.proximamente,
+      iconStyle: this.emblemStyle(c.palo, '42px', {flex:'0 0 auto', opacity: c.proximamente? .4 : 1, filter: c.proximamente ? 'grayscale(.6)' : 'drop-shadow(0 0 8px '+c.color+'55)'}),
+      style: {display:'flex', alignItems:'center', gap:'15px', padding:'16px 16px', borderRadius:'18px',
+        cursor: c.proximamente ? 'default' : 'pointer', opacity: c.proximamente ? .55 : 1,
+        border:'1px solid rgba(231,207,155,'+(c.proximamente? '.14' : '.28')+')', background:'rgba(21,13,52,.5)',
+        boxShadow:'inset 3px 0 0 '+(c.proximamente ? 'rgba(205,189,242,.3)' : c.color), transition:'all .2s ease'},
+      onPick: () => {
+        if (c.proximamente) return;
+        this.setState({cat:c.key, step:'canalizar'});
+        this.after(agil?1200:2300, () => {
+          const items = c.items || [];
+          if (!items.length) { this.setState({step:'elegir'}); return; }
+          let last = -1;
+          try { const j = JSON.parse(localStorage.getItem('pa_afirmacion_last')||'null'); if (j && j.cat===c.key) last = j.idx; } catch(e){}
+          let idx = Math.floor(Math.random()*items.length);
+          if (items.length>1 && idx===last) idx = (idx+1)%items.length;
+          const unlockAt = Date.now() + 24*3600*1000;
+          try {
+            localStorage.setItem('pa_afirmacion_lock', String(unlockAt));
+            localStorage.setItem('pa_afirmacion_last', JSON.stringify({cat:c.key, idx, texto:items[idx], nombre:c.nombre, fecha:Date.now()}));
+          } catch(e){}
+          this.setState({step:'revelar', idx, unlockAt});
+        });
+      }
+    }));
+
+    const c = this.catSel();
+    let countdown = '';
+    if (st.step==='bloqueado' && st.unlockAt) {
+      const ms = Math.max(0, st.unlockAt - st.now);
+      const h = Math.floor(ms/3600000), m = Math.floor((ms%3600000)/60000), s = Math.floor((ms%60000)/1000);
+      countdown = h+' h '+String(m).padStart(2,'0')+' m '+String(s).padStart(2,'0')+' s';
+      if (ms===0) { try{localStorage.removeItem('pa_afirmacion_lock');}catch(e){} }
+    }
+    let lastTexto = '', lastCat = '';
+    if (st.step==='bloqueado') {
+      try { const j = JSON.parse(localStorage.getItem('pa_afirmacion_last')||'null'); if (j) { lastTexto = j.texto||''; lastCat = j.nombre||''; } } catch(e){}
+    }
+
+    const locked = st.step==='bloqueado';
+    const motif = c ? c.motif : '';
+    return {
+      isElegir: st.step==='elegir', isCanalizar: st.step==='canalizar', isRevelar: st.step==='revelar', isBloqueado: locked,
+      categorias, countdown, lastTexto, lastCat,
+      catNombre: c ? c.nombre : '',
+      afirmacion: (c && st.idx!=null && c.items[st.idx]) || '',
+      isCorazon: st.step==='revelar' && motif==='corazon',
+      isMoneda: st.step==='revelar' && motif!=='corazon',
+      halo: {position:'absolute', left:'50%', top:'0', transform:'translate(-50%,-40%)', width:'240px', height:'240px', borderRadius:'50%', pointerEvents:'none',
+        background:'radial-gradient(circle, '+(c?c.color:'#e7cf9b')+'33 0%, transparent 65%)'},
+      coinEmblemStyle: this.emblemStyle('oros', '36px', {filter:'brightness(.35) sepia(1) saturate(.6)'}),
+      canalEmblemStyle: this.emblemStyle(c?c.palo:'oros', '52px', {animation:'afPulse 1.6s ease-in-out infinite'}),
+      lockEmblemStyle: this.emblemStyle('copas', '38px', {}),
+      notifEmblemStyle: this.emblemStyle('copas', '20px', {}),
+      pillLabel: locked ? 'Bloqueado' : 'Disponible',
+      pillStyle: {fontSize:'11px', fontWeight:600, borderRadius:'999px', padding:'7px 12px', whiteSpace:'nowrap',
+        color: locked ? 'rgba(205,189,242,.75)' : '#1c1338',
+        border: locked ? '1px solid rgba(205,189,242,.35)' : 'none',
+        background: locked ? 'transparent' : 'linear-gradient(135deg,#f0d488,#d9ab55)'},
+      notifTrackStyle: {width:'46px', height:'28px', borderRadius:'999px', flex:'0 0 auto', position:'relative', transition:'background .25s',
+        background: st.notif ? 'linear-gradient(135deg,#f0d488,#d9ab55)' : 'rgba(205,189,242,.25)'},
+      notifKnobStyle: {position:'absolute', top:'3px', left: st.notif?'21px':'3px', width:'22px', height:'22px', borderRadius:'50%', background:'#f3ecdc', transition:'left .25s', boxShadow:'0 2px 6px rgba(0,0,0,.35)'},
+      toggleNotif: () => this.setState(s=>({notif:!s.notif})),
+      guardar: () => {
+        try {
+          const hist = JSON.parse(localStorage.getItem('pa_afirmacion_hist')||'[]');
+          hist.unshift({cat:this.state.cat, idx:this.state.idx, fecha:new Date().toISOString()});
+          localStorage.setItem('pa_afirmacion_hist', JSON.stringify(hist.slice(0,60)));
+        } catch(e){}
+        this.setState({toast:'✨ Guardada en Mi camino'});
+        this.after(2200, ()=>this.setState({toast:null}));
+      },
+      goBack: () => {
+        if ((this.state.step==='elegir' || this.state.step==='bloqueado') && this.props.onExit) { this.props.onExit(); return; }
+        const lock = (()=>{ try{return Number(localStorage.getItem('pa_afirmacion_lock')||0);}catch(e){return 0;} })();
+        if (lock > Date.now() && this.props.estadoInicial!=='desbloqueado') this.setState({step:'bloqueado', unlockAt:lock});
+        else this.setState({step:'elegir', cat:null, idx:null});
+      },
+      resetDemo: () => { try{localStorage.removeItem('pa_afirmacion_lock');}catch(e){} this.setState({step:'elegir', cat:null, idx:null, unlockAt:null}); },
+      toast: st.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

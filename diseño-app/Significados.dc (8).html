@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="card-data-oscura.js"></script>
+<script src="oraculo-data.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0720;font-family:'Hanken Grotesk',sans-serif}
+a{color:#e7cf9b}a:hover{color:#f3ecdc}
+@keyframes orShufA{0%,100%{transform:translate(-50%,0) rotate(0deg)}25%{transform:translate(calc(-50% - 40px),-6px) rotate(-11deg)}75%{transform:translate(calc(-50% + 34px),4px) rotate(8deg)}}
+@keyframes orShufB{0%,100%{transform:translate(-50%,0) rotate(0deg)}25%{transform:translate(calc(-50% + 40px),5px) rotate(10deg)}75%{transform:translate(calc(-50% - 34px),-5px) rotate(-9deg)}}
+@keyframes orPulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes orGlow{0%,100%{box-shadow:0 0 18px rgba(236,200,116,.35)}50%{box-shadow:0 0 36px rgba(236,200,116,.7)}}
+.or-scroll::-webkit-scrollbar{display:none}
+</style>
+</helmet>
+<div style="position:relative;min-height:100vh;width:100%;display:flex;justify-content:center;background:radial-gradient(135% 80% at 50% -10%, #241a4f 0%, #150d34 46%, #0a0720 100%)">
+<div style="position:absolute;inset:0;pointer-events:none;opacity:.7;background-image:radial-gradient(1.4px 1.4px at 12% 8%,rgba(255,255,255,.9),transparent),radial-gradient(1px 1px at 28% 18%,rgba(231,207,155,.7),transparent),radial-gradient(1.4px 1.4px at 62% 6%,rgba(255,255,255,.7),transparent),radial-gradient(1px 1px at 82% 14%,rgba(205,189,242,.8),transparent),radial-gradient(1px 1px at 92% 30%,rgba(255,255,255,.6),transparent),radial-gradient(1px 1px at 44% 40%,rgba(255,255,255,.5),transparent),radial-gradient(1px 1px at 6% 56%,rgba(231,207,155,.6),transparent),radial-gradient(1px 1px at 70% 66%,rgba(205,189,242,.5),transparent),radial-gradient(1px 1px at 24% 82%,rgba(255,255,255,.5),transparent)"></div>
+
+<div class="or-scroll" style="position:relative;width:100%;max-width:430px;min-height:100vh;display:flex;flex-direction:column;padding:18px 22px 34px">
+
+  <header style="display:flex;align-items:center;gap:12px;padding:6px 0 2px">
+    <div onClick="{{ goBack }}" style="width:44px;height:44px;margin-left:-10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(231,207,155,.85);font-size:22px;font-family:'Cormorant Garamond',serif">‹</div>
+    <div style="flex:1">
+      <div style="font-size:11px;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:rgba(205,189,242,.6)">Cada 24 horas</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:26px;line-height:1.05;color:#e7cf9b">Oráculo del día</div>
+    </div>
+    <div style="{{ pillStyle }}">{{ pillLabel }}</div>
+  </header>
+
+  <sc-if value="{{ isElegir }}" hint-placeholder-val="{{ true }}">
+    <p style="text-align:center;font-size:14px;line-height:1.65;color:rgba(205,189,242,.78);max-width:320px;margin:22px auto 0">¿Qué necesita tu alma hoy? Elige tu oráculo: barajaremos sus cartas y tres mensajes llegarán a ti.</p>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:22px">
+      <sc-for list="{{ oraculos }}" as="o" hint-placeholder-count="4">
+        <div onClick="{{ o.onPick }}" style="{{ o.style }}">
+          <div style="{{ o.iconStyle }}"></div>
+          <div style="flex:1">
+            <div style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:21px;line-height:1.15;color:#f3ecdc">{{ o.nombre }}</div>
+            <div style="font-size:12px;color:rgba(205,189,242,.65);margin-top:3px;line-height:1.4">{{ o.sub }}</div>
+          </div>
+          <div style="font-family:'Cormorant Garamond',serif;font-size:24px;color:rgba(231,207,155,.7)">›</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="text-align:center;font-size:11.5px;color:rgba(205,189,242,.45);margin-top:18px">Más oráculos llegarán con las próximas lunas ✦</div>
+  </sc-if>
+
+  <sc-if value="{{ isBarajar }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center">
+      <div style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:26px;color:#f3ecdc;text-align:center">{{ oraculoNombre }}</div>
+      <div style="position:relative;width:200px;height:230px;margin-top:36px">
+        <sc-for list="{{ shuffleCards }}" as="s" hint-placeholder-count="8">
+          <div style="{{ s.style }}">
+            <div style="position:absolute;inset:0;opacity:.6;background-image:repeating-linear-gradient(45deg, rgba(231,207,155,.10) 0 2px, transparent 2px 9px), repeating-linear-gradient(-45deg, rgba(205,189,242,.08) 0 2px, transparent 2px 9px)"></div>
+            <div style="position:absolute;inset:6px;border:1.5px solid rgba(231,207,155,.8);border-radius:7px"></div>
+            <div style="{{ backEmblemStyle }}"></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="margin-top:34px;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:18px;color:rgba(231,207,155,.9);animation:orPulse 1.6s ease-in-out infinite">Barajando las cartas…</div>
+      <div style="font-size:12.5px;color:rgba(205,189,242,.6);margin-top:8px">Respira. El universo ya está moviendo las piezas.</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isAbanico }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+      <div style="margin:20px 0 4px;font-size:11px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:rgba(205,189,242,.55)">{{ oraculoNombre }}</div>
+      <h2 style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:30px;color:#f3ecdc;text-align:center">Elige 3 cartas</h2>
+      <p style="font-size:13px;color:rgba(205,189,242,.7);margin-top:6px;text-align:center;line-height:1.55">Déjate guiar por tu intuición.<br>{{ pickLabel }}</p>
+      <div style="position:relative;width:100%;max-width:360px;height:250px;margin-top:30px">
+        <sc-for list="{{ fanCards }}" as="f" hint-placeholder-count="12">
+          <div onClick="{{ f.onPick }}" style="{{ f.style }}">
+            <div style="position:absolute;inset:0;opacity:.6;background-image:repeating-linear-gradient(45deg, rgba(231,207,155,.10) 0 2px, transparent 2px 9px), repeating-linear-gradient(-45deg, rgba(205,189,242,.08) 0 2px, transparent 2px 9px)"></div>
+            <div style="position:absolute;inset:5px;border:1.5px solid rgba(231,207,155,.75);border-radius:6px"></div>
+            <div style="{{ backEmblemSmallStyle }}"></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex:1"></div>
+      <div onClick="{{ revelar }}" style="{{ revelarStyle }}">Revelar mis mensajes</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isRevelar }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+      <div style="margin:18px 0 4px;font-size:11px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:rgba(205,189,242,.55)">{{ oraculoNombre }}</div>
+      <h2 style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:30px;color:#e7cf9b;text-align:center">Tus tres mensajes</h2>
+      <div style="display:flex;flex-direction:column;gap:14px;width:100%;margin-top:20px">
+        <sc-for list="{{ revealCards }}" as="r" hint-placeholder-count="3">
+          <div style="{{ r.wrapStyle }}">
+            <div style="{{ r.innerStyle }}">
+              <div style="position:relative;min-height:128px;backface-visibility:hidden;border-radius:18px;overflow:hidden;background:linear-gradient(160deg,#2a1f57,#150d34 62%,#0b0726);border:1px solid rgba(231,207,155,.55)">
+                <div style="position:absolute;inset:0;opacity:.5;background-image:radial-gradient(1px 1px at 20% 24%,rgba(255,255,255,.8),transparent),radial-gradient(1px 1px at 76% 32%,rgba(231,207,155,.6),transparent),radial-gradient(1px 1px at 38% 70%,rgba(205,189,242,.6),transparent),radial-gradient(1px 1px at 86% 76%,rgba(255,255,255,.5),transparent)"></div>
+                <div style="position:absolute;inset:8px;border:1px solid rgba(231,207,155,.35);border-radius:12px"></div>
+                <div style="position:relative;display:flex;gap:14px;align-items:flex-start;padding:18px 20px 20px">
+                  <div style="{{ r.emblemStyle }}"></div>
+                  <div style="flex:1">
+                    <div style="{{ r.numStyle }}">{{ r.numLabel }}</div>
+                    <sc-if value="{{ r.titulo }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:21px;line-height:1.15;color:#e7cf9b;margin-top:2px">{{ r.titulo }}</div>
+                    </sc-if>
+                    <sc-if value="{{ r.claves }}" hint-placeholder-val="{{ false }}">
+                      <div style="font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(205,189,242,.55);margin-top:4px">{{ r.claves }}</div>
+                    </sc-if>
+                    <div style="{{ r.msgStyle }}">{{ r.mensaje }}</div>
+                  </div>
+                </div>
+              </div>
+              <div style="position:absolute;inset:0;backface-visibility:hidden;transform:rotateY(180deg);border-radius:18px;overflow:hidden;background:linear-gradient(160deg,#2a1f57,#150d34 60%,#0b0726);border:1px solid rgba(231,207,155,.45)">
+                <div style="position:absolute;inset:0;opacity:.55;background-image:repeating-linear-gradient(45deg, rgba(231,207,155,.10) 0 2px, transparent 2px 10px), repeating-linear-gradient(-45deg, rgba(205,189,242,.08) 0 2px, transparent 2px 10px)"></div>
+                <div style="{{ backEmblemMidStyle }}"></div>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:15.5px;color:rgba(205,189,242,.7);margin-top:16px;text-align:center">Tu próximo oráculo se abrirá cuando la energía se renueve, en 24 horas.</div>
+      <div onClick="{{ guardar }}" style="width:100%;margin-top:20px;height:54px;border-radius:999px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(135deg,#f0d488,#ecc874 55%,#d9ab55);color:#1c1338;font-weight:700;font-size:15.5px;box-shadow:0 10px 26px rgba(236,200,116,.28)">Guardar en mi historial</div>
+      <div onClick="{{ goBack }}" style="width:100%;margin-top:12px;height:50px;border-radius:999px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(231,207,155,.4);color:#e7cf9b;font-weight:600;font-size:14px">Volver al inicio</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isBloqueado }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+      <div style="width:74px;height:74px;border-radius:50%;margin-top:40px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(231,207,155,.45);animation:orGlow 3.4s ease-in-out infinite">
+        <div style="{{ lockEmblemStyle }}"></div>
+      </div>
+      <div style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:26px;color:#f3ecdc;margin-top:22px;text-align:center">La energía se está renovando</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-weight:700;font-size:44px;color:#e7cf9b;margin-top:10px;letter-spacing:.02em">{{ countdown }}</div>
+      <div style="font-size:12.5px;color:rgba(205,189,242,.65);margin-top:6px;text-align:center;line-height:1.6">Tu próximo mensaje estará listo entonces.<br>Vuelve cuando el cielo lo marque.</div>
+
+      <div style="width:100%;margin-top:30px;border:1px solid rgba(205,189,242,.25);border-radius:16px;overflow:hidden">
+        <div style="display:flex;gap:12px;align-items:center;padding:13px 14px;background:rgba(21,13,52,.6)">
+          <div style="width:34px;height:34px;border-radius:9px;flex:0 0 auto;background:linear-gradient(160deg,#2a1f57,#0b0726);border:1px solid rgba(231,207,155,.5);display:flex;align-items:center;justify-content:center">
+            <div style="{{ notifEmblemStyle }}"></div>
+          </div>
+          <div style="flex:1">
+            <div style="display:flex;justify-content:space-between;gap:8px"><span style="font-size:12.5px;font-weight:700;color:#f3ecdc">Prisma Azul</span><span style="font-size:11px;color:rgba(205,189,242,.5)">mañana 9:00</span></div>
+            <div style="font-size:12.5px;color:rgba(243,236,220,.85);margin-top:1px">✨ Tu oráculo está listo. Un nuevo mensaje te espera.</div>
+          </div>
+        </div>
+        <div onClick="{{ toggleNotif }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;cursor:pointer;border-top:1px solid rgba(205,189,242,.15)">
+          <div style="font-size:13.5px;color:rgba(243,236,220,.9)">Avisarme cada 24 horas</div>
+          <div style="{{ notifTrackStyle }}"><div style="{{ notifKnobStyle }}"></div></div>
+        </div>
+      </div>
+
+      <sc-if value="{{ lastReading }}" hint-placeholder-val="{{ false }}">
+        <div style="width:100%;margin-top:22px">
+          <div style="font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:rgba(231,207,155,.7);margin-bottom:10px">Tu último oráculo · {{ lastReading.nombre }}</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ lastReading.items }}" as="li" hint-placeholder-count="3">
+              <div style="border:1px solid rgba(205,189,242,.18);border-radius:12px;padding:11px 14px;background:rgba(21,13,52,.4)">
+                <sc-if value="{{ li.titulo }}" hint-placeholder-val="{{ false }}"><div style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:17px;color:#e7cf9b">{{ li.titulo }}</div></sc-if>
+                <div style="font-size:12.5px;line-height:1.55;color:rgba(243,236,220,.85)">{{ li.mensaje }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <div style="flex:1"></div>
+      <div onClick="{{ resetDemo }}" style="margin-top:24px;font-size:12px;color:rgba(205,189,242,.5);cursor:pointer;text-decoration:underline;padding:10px">Restablecer (demo)</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:80;background:rgba(21,13,52,.95);border:1px solid rgba(231,207,155,.5);border-radius:999px;padding:12px 20px;font-size:13px;color:#f3ecdc;box-shadow:0 12px 30px rgba(0,0,0,.5);white-space:nowrap">{{ toast }}</div>
+  </sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;430px&quot;,&quot;height&quot;:&quot;900px&quot;},&quot;ritmoRitual&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;ritual&quot;,&quot;options&quot;:[&quot;ritual&quot;,&quot;ágil&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Ritual&quot;},&quot;cartasEnAbanico&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:12,&quot;min&quot;:8,&quot;max&quot;:20,&quot;step&quot;:1,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Ritual&quot;},&quot;estadoInicial&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;auto&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;desbloqueado&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Estado&quot;}}">
+class Component extends DCLogic {
+  state = { step:'elegir', oraculo:null, picked:[], revealIds:[], flipped:0, unlockAt:null, now:Date.now(), notif:true, toast:null };
+  timers = [];
+  componentDidMount() {
+    if (typeof window !== 'undefined' && (!window.ORACULO_DATA || !window.CARD_OSCURA)) {
+      const t = setInterval(() => { if (window.ORACULO_DATA && window.CARD_OSCURA) { clearInterval(t); this.forceUpdate(); } }, 60);
+      setTimeout(() => clearInterval(t), 4000);
+    }
+    try {
+      const lock = localStorage.getItem('pa_oraculo_lock');
+      if (lock && Number(lock) > Date.now() && this.props.estadoInicial !== 'desbloqueado') {
+        this.setState({ step:'bloqueado', unlockAt:Number(lock) });
+      }
+    } catch(e){}
+    this.tick = setInterval(() => { if (this.state.step==='bloqueado') this.setState({now:Date.now()}); }, 1000);
+  }
+  componentWillUnmount() { this.timers.forEach(clearTimeout); clearInterval(this.tick); }
+  after(ms, fn) { this.timers.push(setTimeout(fn, ms)); }
+  data() { return (typeof window!=='undefined' && window.ORACULO_DATA) || {oraculos:[]}; }
+  oraculoSel() { return this.data().oraculos.find(o=>o.key===this.state.oraculo); }
+  emblemFor(palo) {
+    const CO = (typeof window!=='undefined' && window.CARD_OSCURA) || {};
+    return CO[palo] || CO['oros'] || '';
+  }
+  emblemStyle(palo, size, extra) {
+    const uri = this.emblemFor(palo);
+    return uri ? Object.assign({width:size,height:size,backgroundImage:'url("'+uri+'")',backgroundSize:'contain',backgroundRepeat:'no-repeat',backgroundPosition:'center'}, extra||{}) : {display:'none'};
+  }
+  lock24() {
+    const unlockAt = Date.now() + 24*3600*1000;
+    try { localStorage.setItem('pa_oraculo_lock', String(unlockAt)); } catch(e){}
+    return unlockAt;
+  }
+  renderVals() {
+    const D = this.data(), st = this.state;
+    const nFan = Math.max(6, Math.min(20, Number(this.props.cartasEnAbanico ?? 12)));
+    const agil = this.props.ritmoRitual === 'ágil';
+
+    const oraculos = D.oraculos.map(o => ({
+      nombre:o.nombre, sub:o.sub,
+      iconStyle: this.emblemStyle(o.palo, '42px', {flex:'0 0 auto', filter:'drop-shadow(0 0 8px '+o.color+'55)'}),
+      style: {display:'flex', alignItems:'center', gap:'15px', padding:'16px 16px', borderRadius:'18px', cursor:'pointer',
+        border:'1px solid rgba(231,207,155,.28)', background:'rgba(21,13,52,.5)',
+        boxShadow:'inset 3px 0 0 '+o.color, transition:'all .2s ease'},
+      onPick: () => {
+        this.setState({oraculo:o.key, step:'barajar', picked:[], flipped:0});
+        this.after(agil?1400:2400, () => this.setState({step:'abanico'}));
+      }
+    }));
+
+    const shuffleCards = Array.from({length:8}, (_,i) => ({
+      style: {position:'absolute', left:'50%', top:(20+i*2)+'px', width:'118px', aspectRatio:'5/7',
+        transform:'translate(-50%,0)', borderRadius:'10px', overflow:'hidden',
+        background:'linear-gradient(160deg,#2a1f57,#150d34 60%,#0b0726)',
+        border:'1px solid rgba(231,207,155,'+(0.35+i*0.06)+')', boxShadow:'0 8px 22px rgba(0,0,0,.45)',
+        animation:(i%2?'orShufA':'orShufB')+' '+(agil?0.5:0.7)+'s ease-in-out '+(i*0.07)+'s infinite'}
+    }));
+
+    const fanCards = Array.from({length:nFan}, (_,i) => {
+      const ang = nFan>1 ? -46 + i*(92/(nFan-1)) : 0;
+      const sel = st.picked.includes(i);
+      return {
+        onPick: () => this.setState(s => {
+          const p = s.picked.includes(i) ? s.picked.filter(x=>x!==i) : (s.picked.length<3 ? [...s.picked,i] : s.picked);
+          return {picked:p};
+        }),
+        style: {position:'absolute', left:'50%', bottom:'0', width:'74px', aspectRatio:'5/7',
+          transformOrigin:'50% 118%', transform:'translateX(-50%) rotate('+ang+'deg) translateY('+(sel?-26:0)+'px)',
+          borderRadius:'8px', overflow:'hidden', cursor:'pointer',
+          background:'linear-gradient(160deg,#2a1f57,#150d34 60%,#0b0726)',
+          border:'1px solid rgba(231,207,155,'+(sel?0.95:0.45)+')',
+          boxShadow: sel ? '0 0 24px rgba(236,200,116,.6)' : '0 6px 16px rgba(0,0,0,.45)',
+          transition:'transform .3s cubic-bezier(.2,.8,.3,1), border .2s, box-shadow .3s', zIndex: sel?30:i}
+      };
+    });
+
+    const o = this.oraculoSel();
+    const revealCards = (o ? st.revealIds : []).map((id, i) => {
+      const carta = o.cartas.find(c=>c.id===id) || {};
+      const up = st.flipped > i;
+      return { k:'r'+i,
+        titulo: carta.titulo || '', claves: carta.claves || '', mensaje: carta.mensaje || '',
+        numLabel: 'Mensaje '+['I','II','III'][i],
+        numStyle: {fontSize:'10px', fontWeight:700, letterSpacing:'.22em', textTransform:'uppercase', color:o?o.color:'#cdbdf2', opacity:.85},
+        emblemStyle: this.emblemStyle(o?o.palo:'oros', '34px', {flex:'0 0 auto', marginTop:'4px', filter:'drop-shadow(0 0 8px '+(o?o.color:'#ecc874')+'55)'}),
+        msgStyle: {fontFamily: carta.titulo ? "'Hanken Grotesk',sans-serif" : "'Cormorant Garamond',serif",
+          fontStyle: carta.titulo ? 'normal' : 'italic',
+          fontSize: carta.titulo ? '13.5px' : '19px', lineHeight:1.6, color:'rgba(243,236,220,.92)', marginTop:'7px', textWrap:'pretty'},
+        wrapStyle: {position:'relative', width:'100%', minHeight:'128px', perspective:'900px'},
+        innerStyle: {position:'relative', width:'100%', minHeight:'128px', transformStyle:'preserve-3d',
+          transition:'transform .7s cubic-bezier(.35,.1,.25,1)', transform: up?'rotateY(0deg)':'rotateY(180deg)'} };
+    });
+
+    let countdown = '';
+    if (st.step==='bloqueado' && st.unlockAt) {
+      const ms = Math.max(0, st.unlockAt - st.now);
+      const h = Math.floor(ms/3600000), m = Math.floor((ms%3600000)/60000), s = Math.floor((ms%60000)/1000);
+      countdown = h+' h '+String(m).padStart(2,'0')+' m '+String(s).padStart(2,'0')+' s';
+      if (ms===0) { try{localStorage.removeItem('pa_oraculo_lock');}catch(e){} }
+    }
+    let lastReading = null;
+    if (st.step==='bloqueado') {
+      try {
+        const raw = localStorage.getItem('pa_oraculo_last');
+        if (raw) { const j = JSON.parse(raw); const oo = D.oraculos.find(x=>x.key===j.key);
+          if (oo) lastReading = { nombre:oo.nombre, items: j.ids.map(id=>oo.cartas.find(c=>c.id===id)).filter(Boolean).map(c=>({titulo:c.titulo||'',mensaje:c.mensaje})) };
+        }
+      } catch(e){}
+    }
+
+    const locked = st.step==='bloqueado';
+    return {
+      isElegir: st.step==='elegir', isBarajar: st.step==='barajar', isAbanico: st.step==='abanico',
+      isRevelar: st.step==='revelar', isBloqueado: locked,
+      oraculos, shuffleCards, fanCards, revealCards, countdown, lastReading,
+      oraculoNombre: o ? o.nombre : '',
+      pickLabel: st.picked.length===0 ? 'Toca las cartas que te llamen.' : (st.picked.length + ' de 3 elegidas'),
+      pillLabel: locked ? 'Bloqueado' : 'Disponible',
+      pillStyle: {fontSize:'11px', fontWeight:600, borderRadius:'999px', padding:'7px 12px', whiteSpace:'nowrap',
+        color: locked ? 'rgba(205,189,242,.75)' : '#1c1338',
+        border: locked ? '1px solid rgba(205,189,242,.35)' : 'none',
+        background: locked ? 'transparent' : 'linear-gradient(135deg,#f0d488,#d9ab55)'},
+      backEmblemStyle: this.emblemStyle(o?o.palo:'oros', '46%', {position:'absolute', left:'27%', top:'30%'}),
+      backEmblemSmallStyle: this.emblemStyle(o?o.palo:'oros', '44%', {position:'absolute', left:'28%', top:'32%'}),
+      backEmblemMidStyle: this.emblemStyle(o?o.palo:'oros', '52px', {position:'absolute', left:'50%', top:'50%', transform:'translate(-50%,-50%)'}),
+      lockEmblemStyle: this.emblemStyle('oros', '38px', {}),
+      notifEmblemStyle: this.emblemStyle('oros', '20px', {}),
+      notifTrackStyle: {width:'46px', height:'28px', borderRadius:'999px', flex:'0 0 auto', position:'relative', transition:'background .25s',
+        background: st.notif ? 'linear-gradient(135deg,#f0d488,#d9ab55)' : 'rgba(205,189,242,.25)'},
+      notifKnobStyle: {position:'absolute', top:'3px', left: st.notif?'21px':'3px', width:'22px', height:'22px', borderRadius:'50%', background:'#f3ecdc', transition:'left .25s', boxShadow:'0 2px 6px rgba(0,0,0,.35)'},
+      toggleNotif: () => this.setState(s=>({notif:!s.notif})),
+      revelarStyle: {width:'100%', marginTop:'20px', height:'54px', borderRadius:'999px', display:'flex', alignItems:'center', justifyContent:'center',
+        cursor: st.picked.length===3?'pointer':'default',
+        background: st.picked.length===3?'linear-gradient(135deg,#f0d488,#ecc874 55%,#d9ab55)':'rgba(205,189,242,.14)',
+        color: st.picked.length===3?'#1c1338':'rgba(205,189,242,.4)', fontWeight:700, fontSize:'15.5px',
+        boxShadow: st.picked.length===3?'0 10px 26px rgba(236,200,116,.28)':'none', transition:'all .25s ease'},
+      revelar: () => {
+        if (this.state.picked.length!==3 || !o) return;
+        const pool = o.cartas.map(c=>c.id);
+        for (let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+        const ids = pool.slice(0,3);
+        const unlockAt = this.lock24();
+        try { localStorage.setItem('pa_oraculo_last', JSON.stringify({key:o.key, ids, fecha:Date.now()})); } catch(e){}
+        this.setState({step:'revelar', revealIds:ids, flipped:0, unlockAt});
+        [0,1,2].forEach(i => this.after(500+i*750, ()=>this.setState({flipped:i+1})));
+      },
+      guardar: () => {
+        try {
+          const hist = JSON.parse(localStorage.getItem('pa_oraculo_hist')||'[]');
+          hist.unshift({key:this.state.oraculo, ids:this.state.revealIds, fecha:new Date().toISOString()});
+          localStorage.setItem('pa_oraculo_hist', JSON.stringify(hist.slice(0,60)));
+        } catch(e){}
+        this.setState({toast:'✨ Guardado en Mi camino'});
+        this.after(2200, ()=>this.setState({toast:null}));
+      },
+      goBack: () => {
+        if ((this.state.step==='elegir' || this.state.step==='bloqueado') && this.props.onExit) { this.props.onExit(); return; }
+        const lock = (()=>{ try{return Number(localStorage.getItem('pa_oraculo_lock')||0);}catch(e){return 0;} })();
+        if (lock > Date.now() && this.props.estadoInicial!=='desbloqueado') this.setState({step:'bloqueado', unlockAt:lock, picked:[]});
+        else this.setState({step:'elegir', picked:[], oraculo:null});
+      },
+      resetDemo: () => { try{localStorage.removeItem('pa_oraculo_lock');}catch(e){} this.setState({step:'elegir', picked:[], oraculo:null, unlockAt:null}); },
+      toast: st.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+# Qué NO se sube a los servidores de EAS al compilar.
+#
+# Cuando existe este archivo, EAS lo usa en lugar de .gitignore, así que hay que
+# repetir aquí todo lo de allí y añadir lo que no hace falta para compilar.
+
+# dependencias (EAS las reinstala en su máquina)
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# nativo
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# depuración
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# variables locales
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+example
+
+# carpetas nativas generadas
+/ios
+/android
+
+# --- Material de origen: no interviene en la compilación ---
+# El bundle de diseño pesa ~48 MB (PDFs y PNGs de referencia) y las demos de
+# animación son HTML suelto. Ambos son documentación, no código de la app.
+diseño-app/
+animaciones/

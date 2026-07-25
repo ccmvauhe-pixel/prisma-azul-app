@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="card-data-oscura.js"></script>
+<script src="cruz-data.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0720;font-family:'Hanken Grotesk',sans-serif}
+a{color:#e7cf9b}a:hover{color:#f3ecdc}
+@keyframes cvPulse{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes cvGlow{0%,100%{box-shadow:0 0 22px rgba(236,200,116,.45)}50%{box-shadow:0 0 44px rgba(236,200,116,.8)}}
+@keyframes pzShufL{0%,58%,100%{transform:translate3d(0,0,0) rotateZ(0deg) rotateY(0deg)}12%{transform:translate3d(-96px,6px,40px) rotateZ(-13deg) rotateY(-30deg)}30%{transform:translate3d(-40px,-58px,86px) rotateZ(-5deg) rotateY(-10deg)}46%{transform:translate3d(-2px,-8px,18px) rotateZ(-1deg) rotateY(0deg)}}
+@keyframes pzShufR{0%,58%,100%{transform:translate3d(0,0,0) rotateZ(0deg) rotateY(0deg)}12%{transform:translate3d(96px,8px,40px) rotateZ(13deg) rotateY(30deg)}30%{transform:translate3d(40px,-56px,86px) rotateZ(5deg) rotateY(10deg)}46%{transform:translate3d(2px,-8px,18px) rotateZ(1deg) rotateY(0deg)}}
+@keyframes pzDeckShadow{0%,100%{opacity:.5;transform:translate(-50%,-50%) scale(1)}50%{opacity:.72;transform:translate(-50%,-50%) scale(1.1)}}
+.cv-scroll::-webkit-scrollbar{display:none}
+</style>
+</helmet>
+<div style="position:relative;min-height:100vh;width:100%;display:flex;justify-content:center;background:radial-gradient(135% 80% at 50% -10%, #241a4f 0%, #150d34 46%, #0a0720 100%)">
+<div style="position:absolute;inset:0;pointer-events:none;opacity:.7;background-image:radial-gradient(1.4px 1.4px at 12% 8%,rgba(255,255,255,.9),transparent),radial-gradient(1px 1px at 28% 18%,rgba(231,207,155,.7),transparent),radial-gradient(1.4px 1.4px at 62% 6%,rgba(255,255,255,.7),transparent),radial-gradient(1px 1px at 82% 14%,rgba(205,189,242,.8),transparent),radial-gradient(1px 1px at 92% 30%,rgba(255,255,255,.6),transparent),radial-gradient(1px 1px at 44% 40%,rgba(255,255,255,.5),transparent),radial-gradient(1px 1px at 6% 56%,rgba(231,207,155,.6),transparent),radial-gradient(1px 1px at 70% 66%,rgba(205,189,242,.5),transparent),radial-gradient(1px 1px at 24% 82%,rgba(255,255,255,.5),transparent)"></div>
+
+<div class="cv-scroll" style="position:relative;width:100%;max-width:430px;min-height:100vh;display:flex;flex-direction:column;padding:18px 22px 34px">
+
+  <header style="display:flex;align-items:center;gap:12px;padding:6px 0 2px">
+    <div onClick="{{ goBack }}" style="width:44px;height:44px;margin-left:-10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(231,207,155,.85);font-size:22px;font-family:'Cormorant Garamond',serif">‹</div>
+    <div style="flex:1">
+      <div style="font-size:11px;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:rgba(205,189,242,.6)">Lectura mensual</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:26px;line-height:1.05;color:#e7cf9b">Cruz de Vida</div>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:rgba(231,207,155,.85);border:1px solid rgba(231,207,155,.35);border-radius:999px;padding:7px 12px;white-space:nowrap">{{ usoLabel }}</div>
+  </header>
+
+  <sc-if value="{{ isIntro }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1;display:flex;flex-direction:column">
+      <div style="display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(3,74px);gap:8px;justify-content:center;margin:30px 0 24px;grid-template-areas:'. a .' 'l c r' '. b .'">
+        <sc-for list="{{ heroCards }}" as="h" hint-placeholder-count="5">
+          <div style="{{ h.style }}">
+            <div style="position:absolute;inset:0;opacity:.6;background-image:repeating-linear-gradient(45deg, rgba(231,207,155,.10) 0 2px, transparent 2px 9px), repeating-linear-gradient(-45deg, rgba(205,189,242,.08) 0 2px, transparent 2px 9px)"></div>
+            <div style="position:absolute;inset:5px;border:1.5px solid rgba(231,207,155,.8);border-radius:6px"></div>
+            <div style="{{ h.emblemStyle }}"></div>
+          </div>
+        </sc-for>
+      </div>
+      <p style="text-align:center;font-size:14.5px;line-height:1.65;color:rgba(205,189,242,.78);max-width:320px;margin:0 auto">Cinco cartas forman la cruz. Solo una posición guarda tu respuesta: donde aparezca la carta que representa tu pregunta.</p>
+      <div style="display:flex;flex-direction:column;gap:12px;margin:26px 4px 0">
+        <div style="display:flex;gap:14px;align-items:baseline"><div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#ecc874;width:18px;text-align:center">I</div><div style="font-size:13.5px;color:rgba(243,236,220,.85);line-height:1.5">Dinos quién consulta: tu carta representante se coloca al centro.</div></div>
+        <div style="display:flex;gap:14px;align-items:baseline"><div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#ecc874;width:18px;text-align:center">II</div><div style="font-size:13.5px;color:rgba(243,236,220,.85);line-height:1.5">Elige tu pregunta entre las que la Cruz puede responder.</div></div>
+        <div style="display:flex;gap:14px;align-items:baseline"><div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#ecc874;width:18px;text-align:center">III</div><div style="font-size:13.5px;color:rgba(243,236,220,.85);line-height:1.5">Concéntrate y tira: la cruz se irá formando hasta revelar tu carta.</div></div>
+      </div>
+      <div style="flex:1"></div>
+      <sc-if value="{{ hasUltima }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:26px;border:1px solid rgba(231,207,155,.3);border-radius:18px;padding:16px 18px;background:rgba(21,13,52,.5)">
+          <div style="font-size:10.5px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:rgba(231,207,155,.75)">Tu última lectura · {{ ultimaFecha }}</div>
+          <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:18px;line-height:1.35;color:#f3ecdc;margin-top:8px">“{{ ultimaPregunta }}”</div>
+          <div style="font-size:12px;font-weight:600;color:rgba(231,207,155,.85);margin-top:7px">Apareció en {{ ultimaPos }} · {{ ultimaCarta }}</div>
+          <div style="font-size:13px;line-height:1.65;color:rgba(243,236,220,.88);margin-top:8px;text-wrap:pretty">{{ ultimaTexto }}</div>
+        </div>
+      </sc-if>
+      </sc-if>
+      <sc-if value="{{ hasLecturas }}" hint-placeholder-val="{{ true }}">
+        <div onClick="{{ startRitual }}" style="margin-top:28px;height:54px;border-radius:999px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(135deg,#f0d488,#ecc874 55%,#d9ab55);color:#1c1338;font-weight:700;font-size:15.5px;letter-spacing:.02em;box-shadow:0 10px 26px rgba(236,200,116,.28)">Comenzar el ritual</div>
+      </sc-if>
+      <sc-if value="{{ noLecturas }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:28px;text-align:center;border:1px solid rgba(231,207,155,.25);border-radius:18px;padding:18px 20px">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:19px;color:#e7cf9b">La energía de tu lectura se renueva con la luna nueva</div>
+          <div style="font-size:12.5px;color:rgba(205,189,242,.65);margin-top:6px">Tu próxima lectura gratis estará lista en {{ diasRestantes }} días</div>
+        </div>
+      </sc-if>
+      <div onClick="{{ openPaywall }}" style="margin-top:12px;height:50px;border-radius:999px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(231,207,155,.4);color:#e7cf9b;font-weight:600;font-size:14px">Desbloquear más lecturas</div>
+      <div onClick="{{ resetDemo }}" style="margin:14px auto 0;width:fit-content;font-size:12px;color:rgba(205,189,242,.5);cursor:pointer;text-decoration:underline;padding:10px">Restablecer (demo)</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isGenero }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;display:flex;flex-direction:column">
+      <div style="margin:26px 0 6px;font-size:11px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:rgba(205,189,242,.55);text-align:center">Paso 1 de 3</div>
+      <h2 style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:32px;color:#f3ecdc;text-align:center">¿Quién consulta?</h2>
+      <p style="text-align:center;font-size:13.5px;color:rgba(205,189,242,.7);margin-top:8px;line-height:1.6">Tu carta representante se colocará<br>al centro de la cruz.</p>
+      <div style="display:flex;gap:16px;justify-content:center;margin-top:32px">
+        <sc-for list="{{ generoOpts }}" as="g" hint-placeholder-count="2">
+          <div onClick="{{ g.onPick }}" style="{{ g.style }}">
+            <div style="width:96px;aspect-ratio:5/7">
+              <dc-import name="Carta" num="{{ g.num }}" idx="{{ g.idx }}" rank-name="{{ g.rankName }}" color-main="{{ g.color }}" idx-color="{{ g.idxColor }}" emblem-uri="{{ g.emblem }}" crown-uri="{{ g.crown }}" hint-size="96px,134px"></dc-import>
+            </div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#e7cf9b;margin-top:12px">{{ g.label }}</div>
+            <div style="font-size:11.5px;color:rgba(205,189,242,.6);margin-top:2px">{{ g.cardName }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isPregunta }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;display:flex;flex-direction:column">
+      <div style="margin:22px 0 6px;font-size:11px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:rgba(205,189,242,.55);text-align:center">Paso 2 de 3</div>
+      <h2 style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:32px;color:#f3ecdc;text-align:center">Elige tu pregunta</h2>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:18px">
+        <sc-for list="{{ catList }}" as="cat" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:12px;margin:14px 2px 8px">
+            <div style="font-size:11px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:rgba(231,207,155,.75)">{{ cat.nombre }}</div>
+            <div style="flex:1;height:1px;background:linear-gradient(90deg, rgba(231,207,155,.35), rgba(231,207,155,0))"></div>
+          </div>
+          <sc-for list="{{ cat.items }}" as="q" hint-placeholder-count="3">
+            <div onClick="{{ q.onPick }}" style="{{ q.style }}">
+              <div style="{{ q.dotStyle }}"></div>
+              <div style="flex:1;font-size:14px;line-height:1.45;color:#f3ecdc">{{ q.texto }}</div>
+            </div>
+          </sc-for>
+        </sc-for>
+      </div>
+      <div style="margin-top:22px">
+        <div onClick="{{ confirmPregunta }}" style="{{ continuarStyle }}">Continuar</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isConcentra }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+      <div style="margin:22px 0 6px;font-size:11px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:rgba(205,189,242,.55)">Paso 3 de 3</div>
+      <h2 style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:32px;color:#f3ecdc">Concéntrate</h2>
+      <div style="width:128px;aspect-ratio:5/7;margin-top:26px;animation:cvGlow 3.2s ease-in-out infinite;border-radius:10px">
+        <dc-import name="Carta" num="{{ centro.num }}" idx="{{ centro.idx }}" rank-name="{{ centro.rankName }}" color-main="{{ centro.color }}" idx-color="{{ centro.idxColor }}" emblem-uri="{{ centro.emblem }}" crown-uri="{{ centro.crown }}" hint-size="128px,179px"></dc-import>
+      </div>
+      <div style="font-size:11.5px;color:rgba(205,189,242,.6);margin-top:12px">Tu carta al centro · {{ centro.cardName }}</div>
+      <div style="margin-top:24px;text-align:center;max-width:300px">
+        <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;line-height:1.4;color:#e7cf9b">“{{ preguntaTexto }}”</div>
+        <p style="font-size:13.5px;line-height:1.65;color:rgba(205,189,242,.75);margin-top:14px">Cierra los ojos y respira profundo. Sostén tu pregunta en el corazón. El universo ya está moviendo las piezas.</p>
+      </div>
+      <div style="flex:1"></div>
+      <div onClick="{{ tirar }}" style="width:100%;margin-top:26px;height:54px;border-radius:999px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(135deg,#f0d488,#ecc874 55%,#d9ab55);color:#1c1338;font-weight:700;font-size:15.5px;box-shadow:0 10px 26px rgba(236,200,116,.28)">Tirar las cartas</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isTirada }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+      <div style="margin:16px 0 4px;font-family:'Cormorant Garamond',serif;font-style:italic;font-size:17px;color:rgba(231,207,155,.9);text-align:center;max-width:320px;line-height:1.35">“{{ preguntaTexto }}”</div>
+      <div style="font-size:11.5px;color:rgba(205,189,242,.6);margin-top:4px">Buscando tu carta · {{ repLabel }}</div>
+      <sc-if value="{{ barajando }}" hint-placeholder-val="{{ false }}">
+        <div style="position:relative;width:260px;height:250px;margin-top:28px;perspective:850px">
+          <div style="position:absolute;inset:0;transform-style:preserve-3d;transform:rotateX(30deg)">
+            <div style="position:absolute;left:50%;top:60%;width:180px;height:140px;border-radius:50%;background:radial-gradient(ellipse,rgba(0,0,0,.5),transparent 68%);filter:blur(7px);animation:pzDeckShadow 1.1s ease-in-out infinite"></div>
+            <sc-for list="{{ shuffleCards }}" as="sh" hint-placeholder-count="8">
+              <div style="{{ sh.style }}">
+                <div style="{{ sh.innerStyle }}">
+                  <div style="position:absolute;inset:0;opacity:.6;background-image:repeating-linear-gradient(45deg, rgba(231,207,155,.10) 0 2px, transparent 2px 9px), repeating-linear-gradient(-45deg, rgba(205,189,242,.08) 0 2px, transparent 2px 9px)"></div>
+                  <div style="position:absolute;inset:6px;border:1.5px solid rgba(231,207,155,.8);border-radius:7px"></div>
+                  <div style="{{ backEmblemStyle }}"></div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ cruzVisible }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:346px;margin-top:18px;grid-template-areas:'. arriba .' 'izquierda centro derecha' '. abajo .'">
+        <div style="grid-area:centro;display:flex;flex-direction:column;align-items:center;gap:5px">
+          <div style="width:100%;aspect-ratio:5/7">
+            <dc-import name="Carta" num="{{ centro.num }}" idx="{{ centro.idx }}" rank-name="{{ centro.rankName }}" color-main="{{ centro.color }}" idx-color="{{ centro.idxColor }}" emblem-uri="{{ centro.emblem }}" crown-uri="{{ centro.crown }}" hint-size="100%,100%"></dc-import>
+          </div>
+          <div style="font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(205,189,242,.5)">Consultante</div>
+        </div>
+        <sc-for list="{{ slots }}" as="s" hint-placeholder-count="4">
+          <div style="{{ s.cellStyle }}">
+            <div style="position:relative;width:100%;aspect-ratio:5/7">
+              <div style="position:absolute;inset:0;border:1px dashed rgba(205,189,242,.3);border-radius:9px"></div>
+              <sc-for list="{{ s.cards }}" as="c" hint-placeholder-count="0">
+                <div style="{{ c.wrapStyle }}">
+                  <div style="{{ c.innerStyle }}">
+                    <div style="position:absolute;inset:0;backface-visibility:hidden">
+                      <dc-import name="Carta" num="{{ c.num }}" idx="{{ c.idx }}" rank-name="{{ c.rankName }}" color-main="{{ c.color }}" idx-color="{{ c.idxColor }}" emblem-uri="{{ c.emblem }}" crown-uri="{{ c.crown }}" hint-size="100%,100%"></dc-import>
+                    </div>
+                    <div style="position:absolute;inset:0;backface-visibility:hidden;transform:rotateY(180deg);border-radius:9px;overflow:hidden;background:linear-gradient(160deg,#2a1f57,#150d34 60%,#0b0726);box-shadow:0 8px 20px rgba(0,0,0,.5)">
+                      <div style="position:absolute;inset:0;opacity:.6;background-image:repeating-linear-gradient(45deg, rgba(231,207,155,.10) 0 2px, transparent 2px 9px), repeating-linear-gradient(-45deg, rgba(205,189,242,.08) 0 2px, transparent 2px 9px)"></div>
+                      <div style="position:absolute;inset:6px;border:1.5px solid rgba(231,207,155,.8);border-radius:6px"></div>
+                      <div style="{{ backEmblemStyle }}"></div>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="{{ s.labelStyle }}">{{ s.label }}</div>
+          </div>
+        </sc-for>
+      </div>
+      </sc-if>
+      <div style="{{ statusStyle }}">{{ statusText }}</div>
+      <div style="flex:1"></div>
+      <div style="position:relative;width:64px;height:90px;margin-top:10px">
+        <div style="position:absolute;inset:0;transform:rotate(-6deg);border-radius:7px;background:linear-gradient(160deg,#241a4f,#120b30);border:1px solid rgba(231,207,155,.3)"></div>
+        <div style="position:absolute;inset:0;transform:rotate(3deg);border-radius:7px;background:linear-gradient(160deg,#2a1f57,#150d34);border:1px solid rgba(231,207,155,.45)"></div>
+        <div style="position:absolute;inset:0;border-radius:7px;overflow:hidden;background:linear-gradient(160deg,#2a1f57,#150d34 60%,#0b0726);border:1px solid rgba(231,207,155,.6)">
+          <div style="position:absolute;inset:0;opacity:.55;background-image:repeating-linear-gradient(45deg, rgba(231,207,155,.10) 0 2px, transparent 2px 8px)"></div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isResultado }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+      <div style="margin:22px 0 4px;font-size:11px;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:rgba(205,189,242,.55)">Tu carta apareció en</div>
+      <h2 style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:38px;color:#e7cf9b;line-height:1.05">{{ resPosNombre }}</h2>
+      <div style="display:grid;grid-template-columns:repeat(3,26px);grid-template-rows:repeat(3,36px);gap:5px;margin-top:14px;grid-template-areas:'. a .' 'l c r' '. b .'">
+        <sc-for list="{{ miniCross }}" as="m" hint-placeholder-count="5">
+          <div style="{{ m.style }}"></div>
+        </sc-for>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;margin-top:22px;width:100%;border:1px solid rgba(231,207,155,.28);border-radius:18px;padding:16px">
+        <div style="width:72px;flex:0 0 auto;aspect-ratio:5/7">
+          <dc-import name="Carta" num="{{ resCard.num }}" idx="{{ resCard.idx }}" rank-name="{{ resCard.rankName }}" color-main="{{ resCard.color }}" idx-color="{{ resCard.idxColor }}" emblem-uri="{{ resCard.emblem }}" crown-uri="{{ resCard.crown }}" hint-size="72px,101px"></dc-import>
+        </div>
+        <div style="flex:1">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:21px;color:#f3ecdc;line-height:1.1">{{ resCard.cardName }}</div>
+          <div style="font-size:11.5px;color:rgba(205,189,242,.65);margin-top:4px;line-height:1.4">{{ resSubtitulo }}</div>
+        </div>
+      </div>
+      <p style="font-size:14.5px;line-height:1.75;color:rgba(243,236,220,.92);margin-top:20px;text-wrap:pretty">{{ resTexto }}</p>
+      <div style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:16px;color:rgba(205,189,242,.7);margin-top:18px;text-align:center">Las demás cartas descansan: solo esta posición guarda tu respuesta.</div>
+      <div style="flex:1"></div>
+      <div onClick="{{ guardar }}" style="width:100%;margin-top:26px;height:54px;border-radius:999px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:linear-gradient(135deg,#f0d488,#ecc874 55%,#d9ab55);color:#1c1338;font-weight:700;font-size:15.5px;box-shadow:0 10px 26px rgba(236,200,116,.28)">Guardar lectura</div>
+      <div onClick="{{ goBack }}" style="width:100%;margin-top:12px;height:50px;border-radius:999px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1px solid rgba(231,207,155,.4);color:#e7cf9b;font-weight:600;font-size:14px">Volver al inicio</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:80;background:rgba(21,13,52,.95);border:1px solid rgba(231,207,155,.5);border-radius:999px;padding:12px 20px;font-size:13px;color:#f3ecdc;box-shadow:0 12px 30px rgba(0,0,0,.5);white-space:nowrap">{{ toast }}</div>
+  </sc-if>
+
+  <sc-if value="{{ showPaywall }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;z-index:60;background:rgba(8,5,22,.75);backdrop-filter:blur(6px)" onClick="{{ closePaywall }}"></div>
+    <div style="position:fixed;left:50%;bottom:0;transform:translateX(-50%);z-index:61;width:100%;max-width:430px;border-radius:26px 26px 0 0;background:linear-gradient(180deg,#241a4f,#150d34 70%);border:1px solid rgba(231,207,155,.3);border-bottom:none;padding:26px 24px 34px">
+      <div style="width:38px;height:4px;border-radius:99px;background:rgba(205,189,242,.35);margin:0 auto 18px"></div>
+      <h3 style="font-family:'Cormorant Garamond',serif;font-weight:600;font-size:27px;color:#e7cf9b;text-align:center">Desbloquear más lecturas</h3>
+      <p style="font-size:13px;line-height:1.6;color:rgba(205,189,242,.75);text-align:center;margin-top:8px">La Cruz de Vida se abre una vez al mes.<br>Puedes recibir hasta dos lecturas adicionales.</p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:20px">
+        <sc-for list="{{ payOpts }}" as="p" hint-placeholder-count="2">
+          <div onClick="{{ p.onPick }}" style="{{ p.style }}">
+            <div style="{{ p.dotStyle }}"></div>
+            <div style="flex:1">
+              <div style="font-size:15px;font-weight:600;color:#f3ecdc">{{ p.titulo }}</div>
+              <div style="font-size:12px;color:rgba(205,189,242,.65);margin-top:2px">{{ p.sub }}</div>
+            </div>
+            <div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#ecc874">{{ p.precio }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="font-size:11.5px;color:rgba(205,189,242,.5);text-align:center;margin-top:12px">Máximo 3 lecturas por mes · Pago único</div>
+      <div onClick="{{ comprar }}" style="{{ comprarStyle }}">Continuar</div>
+      <div onClick="{{ closePaywall }}" style="height:46px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(205,189,242,.7);font-size:13.5px;font-weight:500;margin-top:4px">Quizá después</div>
+    </div>
+  </sc-if>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;430px&quot;,&quot;height&quot;:&quot;900px&quot;},&quot;lecturasUsadas&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:0,&quot;min&quot;:0,&quot;max&quot;:3,&quot;step&quot;:1,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Estado&quot;},&quot;ritmoTirada&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;ritual&quot;,&quot;options&quot;:[&quot;ritual&quot;,&quot;ágil&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tirada&quot;},&quot;posicionForzada&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;aleatoria&quot;,&quot;options&quot;:[&quot;aleatoria&quot;,&quot;arriba&quot;,&quot;izquierda&quot;,&quot;abajo&quot;,&quot;derecha&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tirada&quot;}}">
+class Component extends DCLogic {
+  state = {
+    step:'intro', genero:null, preguntaId:null, showPaywall:false, payPick:null,
+    usadas:null, compradas:0, barajando:false, slots:{arriba:[],izquierda:[],abajo:[],derecha:[]},
+    found:false, resPos:null, resCard:null, toast:null, statusText:''
+  };
+  timers = [];
+  componentDidMount() {
+    if (typeof window !== 'undefined' && (!window.CRUZ_DATA || !window.CARD_OSCURA)) {
+      const t = setInterval(() => { if (window.CRUZ_DATA && window.CARD_OSCURA) { clearInterval(t); this.forceUpdate(); } }, 60);
+      setTimeout(() => clearInterval(t), 4000);
+    }
+    try {
+      const j = JSON.parse(localStorage.getItem('pa_cruz_mes')||'null');
+      if (j && j.ym === this.ym()) this.setState({usadas: j.usadas != null ? j.usadas : null, compradas: j.compradas || 0});
+      else if (j) localStorage.removeItem('pa_cruz_mes');
+    } catch(e){}
+  }
+  ym() { const d = new Date(); return d.getFullYear()+'-'+(d.getMonth()+1); }
+  saveMes(usadas, compradas) { try { localStorage.setItem('pa_cruz_mes', JSON.stringify({ym:this.ym(), usadas, compradas})); } catch(e){} }
+  componentWillUnmount() { this.timers.forEach(clearTimeout); }
+  after(ms, fn) { this.timers.push(setTimeout(fn, ms)); }
+  clearTimers() { this.timers.forEach(clearTimeout); this.timers = []; }
+
+  suit(p) { return {oros:{c:'#ecc874',i:'#f0d488'},copas:{c:'#e79ab4',i:'#f0b9cd'},espadas:{c:'#8db0ec',i:'#aecaf5'},bastos:{c:'#86cf9e',i:'#a8e3bc'}}[p]; }
+  numName(n) { return {1:'As',2:'Dos',3:'Tres',4:'Cuatro',5:'Cinco',6:'Seis',7:'Siete',10:'Diez',11:'Caballo',12:'Rey'}[n]; }
+  paloName(p) { return p.charAt(0).toUpperCase()+p.slice(1); }
+  cardName(c) { return this.numName(c.num)+' de '+this.paloName(c.palo); }
+  rankName(n) { return n===10?'Sota':n===11?'Caballo':n===12?'Rey':''; }
+  cardProps(c) {
+    const CO = (typeof window!=='undefined' && window.CARD_OSCURA) || {};
+    const s = this.suit(c.palo);
+    return { num:c.num, idx:String(c.num), rankName:this.rankName(c.num), color:s.c, idxColor:s.i,
+      emblem:CO[c.palo]||'', crown:CO['corona']||'', cardName:this.cardName(c), palo:c.palo };
+  }
+  centroCard() { return this.state.genero==='hombre' ? {palo:'copas',num:12} : {palo:'copas',num:10}; }
+  pregunta() {
+    const D = (typeof window!=='undefined' && window.CRUZ_DATA) || {preguntas:[]};
+    return D.preguntas.find(q=>q.id===this.state.preguntaId);
+  }
+  repCards() {
+    const q = this.pregunta(); if (!q) return [];
+    if (q.rep.tipo==='fija') return [{palo:q.rep.palo,num:q.rep.num}];
+    if (q.rep.tipo==='genero') { const r=q.rep[this.state.genero||'mujer']; return [{palo:r.palo,num:r.num}]; }
+    return (q.rep[this.state.genero||'mujer']||[]).map(c=>({palo:c.palo,num:c.num}));
+  }
+
+  tirar = () => {
+    const reps = this.repCards(); if (!reps.length) return;
+    const centro = this.centroCard();
+    const isRepOrCentro = c => (c.palo===centro.palo&&c.num===centro.num) || reps.some(r=>r.palo===c.palo&&r.num===c.num);
+    const pool = [];
+    ['oros','copas','espadas','bastos'].forEach(p=>[1,2,3,4,5,6,7,10,11,12].forEach(n=>{ const c={palo:p,num:n}; if(!isRepOrCentro(c)) pool.push(c); }));
+    for (let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+    const posKeys = ['arriba','izquierda','abajo','derecha'];
+    const forz = this.props.posicionForzada;
+    const target = (forz && posKeys.includes(forz)) ? posKeys.indexOf(forz) : Math.floor(Math.random()*4);
+    const r = Math.random();
+    const round = r<0.45 ? 0 : (r<0.8 ? 1 : 2);
+    const finalIdx = round*4 + target;
+    const seq = [];
+    for (let i=0;i<finalIdx;i++) seq.push(pool[i]);
+    seq.push(reps[Math.floor(Math.random()*reps.length)]);
+    const repCard = seq[seq.length-1];
+
+    this.setState({ step:'tirada', barajando:true, slots:{arriba:[],izquierda:[],abajo:[],derecha:[]}, found:false, resPos:null, resCard:null, statusText:'Barajando las cartas…' });
+    const D = window.CRUZ_DATA;
+    const agil = this.props.ritmoTirada==='ágil';
+    const gap = agil ? 950 : 1500;
+    const shufMs = agil ? 1400 : 2300;
+    this.after(shufMs, () => this.setState({barajando:false, statusText:''}));
+    seq.forEach((card, j) => {
+      const pos = posKeys[j%4];
+      const posDef = D.posiciones.find(p=>p.key===pos);
+      const isLast = j===seq.length-1;
+      this.after(shufMs + 200 + j*gap, () => {
+        this.setState(s => { const slots={...s.slots}; slots[pos]=[...slots[pos],{card,phase:'enter'}]; return {slots, statusText:posDef.nombre+'…'}; });
+        this.after(60, () => this.setPhase(pos,'down'));
+        this.after(560, () => this.setPhase(pos,'up'));
+        if (isLast) {
+          this.after(1250, () => { this.setPhase(pos,'rep'); this.setState({found:true, statusText:'✨ Tu carta apareció · '+posDef.nombre}); });
+          this.after(3000, () => {
+            const q = this.pregunta(), posDef2 = D.posiciones.find(p=>p.key===pos), u = this.getUsadas()+1;
+            try {
+              localStorage.setItem('pa_cruz_last', JSON.stringify({pregunta:q?q.texto:'', pos:posDef2?posDef2.nombre:'', carta:this.cardName(card), texto:(q&&q.resp&&q.resp[pos])||'', fecha:Date.now()}));
+              localStorage.setItem('pa_cruz_next', String(Date.now()+30*86400000));
+            } catch(e){}
+            this.saveMes(u, this.state.compradas);
+            this.setState({ step:'resultado', resPos:pos, resCard:card, usadas:u });
+          });
+        }
+      });
+    });
+  };
+  setPhase(pos, phase) {
+    this.setState(s => { const slots={...s.slots}; const arr=[...slots[pos]]; if(!arr.length) return null;
+      arr[arr.length-1]={...arr[arr.length-1], phase}; slots[pos]=arr; return {slots}; });
+  }
+  getUsadas() { return this.state.usadas != null ? this.state.usadas : (Number(this.props.lecturasUsadas ?? 0)); }
+  ultima() { try { return JSON.parse(localStorage.getItem('pa_cruz_last')||'null'); } catch(e){ return null; } }
+
+  renderVals() {
+    const D = (typeof window!=='undefined' && window.CRUZ_DATA) || {posiciones:[],categorias:[],preguntas:[]};
+    const CO = (typeof window!=='undefined' && window.CARD_OSCURA) || {};
+    const st = this.state;
+    const usadas = this.getUsadas();
+    const disponibles = 1 + st.compradas;
+    const hasLecturas = usadas < disponibles;
+
+    const heroAreas = ['a','l','c','r','b'];
+    const heroCards = heroAreas.map((ar,i)=>({
+      emblemStyle: ar==='c' && CO['oros'] ? {position:'absolute',left:'22%',top:'22%',width:'56%',height:'56%',backgroundImage:'url("'+CO['oros']+'")',backgroundSize:'contain',backgroundRepeat:'no-repeat',backgroundPosition:'center'} : {display:'none'},
+      style: {gridArea:ar, position:'relative', borderRadius:'8px', overflow:'hidden',
+        background:'linear-gradient(160deg,#2a1f57,#150d34 60%,#0b0726)',
+        border:'1px solid rgba(231,207,155,'+(ar==='c'?'.7':'.35')+')',
+        boxShadow: ar==='c' ? '0 0 26px rgba(236,200,116,.3)' : '0 6px 16px rgba(0,0,0,.4)',
+        animation: ar==='c' ? 'none' : 'cvPulse '+(3+i*.4)+'s ease-in-out infinite'}
+    }));
+
+    const generoOpts = [
+      {key:'mujer', label:'Mujer', card:{palo:'copas',num:10}},
+      {key:'hombre', label:'Hombre', card:{palo:'copas',num:12}},
+    ].map(g => ({
+      ...this.cardProps(g.card), label:g.label,
+      onPick: () => { this.setState({genero:g.key}); this.after(320, ()=>this.setState({step:'pregunta'})); },
+      style: {flex:'0 0 auto', width:'150px', display:'flex', flexDirection:'column', alignItems:'center',
+        padding:'20px 12px 18px', borderRadius:'20px', cursor:'pointer',
+        border:'1px solid '+(st.genero===g.key?'rgba(236,200,116,.9)':'rgba(231,207,155,.28)'),
+        background: st.genero===g.key?'rgba(236,200,116,.08)':'rgba(21,13,52,.5)',
+        boxShadow: st.genero===g.key?'0 0 30px rgba(236,200,116,.25)':'none', transition:'all .25s ease'}
+    }));
+
+    const catList = D.categorias.map(cat => ({
+      nombre: cat.nombre,
+      items: cat.ids.map(id => {
+        const q = D.preguntas.find(p=>p.id===id); if (!q) return null;
+        const sel = st.preguntaId===id;
+        return { texto:q.texto,
+          onPick: ()=>this.setState({preguntaId:id}),
+          style: {display:'flex', alignItems:'center', gap:'13px', minHeight:'50px', padding:'11px 14px',
+            borderRadius:'14px', cursor:'pointer', transition:'all .2s ease',
+            border:'1px solid '+(sel?'rgba(236,200,116,.85)':'rgba(205,189,242,.16)'),
+            background: sel?'rgba(236,200,116,.08)':'rgba(21,13,52,.4)'},
+          dotStyle: {width:'18px', height:'18px', flex:'0 0 auto', borderRadius:'50%',
+            border:'1.5px solid '+(sel?'#ecc874':'rgba(205,189,242,.45)'),
+            background: sel?'radial-gradient(circle at center, #ecc874 45%, transparent 52%)':'transparent', transition:'all .2s ease'} };
+      }).filter(Boolean)
+    }));
+
+    const q = this.pregunta();
+    const reps = this.repCards();
+    const repLabel = reps.length===1 ? this.cardName(reps[0]) : reps.map(r=>this.numName(r.num)+' de '+this.paloName(r.palo)).join(' · ');
+    const centro = this.cardProps(this.centroCard());
+
+    const posKeys = ['arriba','izquierda','abajo','derecha'];
+    const slots = posKeys.map(key => {
+      const def = D.posiciones.find(p=>p.key===key) || {nombre:key};
+      const arr = st.slots[key]||[];
+      const cards = arr.slice(-2).map((entry,i,vis) => {
+        const isTop = i===vis.length-1;
+        const ph = entry.phase;
+        const up = ph==='up'||ph==='rep';
+        return { k:key+'-'+i, ...this.cardProps(entry.card),
+          wrapStyle: {position:'absolute', inset:0, perspective:'700px', zIndex:isTop?2:1,
+            opacity: ph==='enter'?0:(!isTop?0.5:(st.found&&ph!=='rep'?0.45:1)),
+            transform: ph==='enter'?'translateY(46px) scale(.82)':(!isTop?'rotate(-4deg)':'none'),
+            transition:'opacity .4s ease, transform .45s cubic-bezier(.2,.8,.3,1)',
+            filter: ph==='rep'?'drop-shadow(0 0 18px rgba(236,200,116,.75))':'none'},
+          innerStyle: {position:'absolute', inset:0, transformStyle:'preserve-3d',
+            transition:'transform .65s cubic-bezier(.35,.1,.25,1)',
+            transform: up?'rotateY(0deg)':'rotateY(180deg)'} };
+      });
+      return { key, label:def.nombre, cards,
+        cellStyle:{gridArea:key, display:'flex', flexDirection:'column', alignItems:'center', gap:'5px'},
+        labelStyle:{fontSize:'10px', fontWeight:600, letterSpacing:'.14em', textTransform:'uppercase',
+          color: (st.found && st.resCard && arr.length && arr[arr.length-1].phase==='rep') || (st.step==='tirada'&&false) ? '#ecc874' : 'rgba(205,189,242,.5)',
+          transition:'color .3s'} };
+    });
+
+    let resTexto='', resSubtitulo='', resPosNombre='', resCardP=centro;
+    if (st.step==='resultado' && q && st.resCard) {
+      const posDef = D.posiciones.find(p=>p.key===st.resPos);
+      resPosNombre = posDef ? posDef.nombre : '';
+      resCardP = this.cardProps(st.resCard);
+      if (q.rep.tipo==='multi') {
+        const g = q.grupos[st.resCard.palo];
+        resTexto = g ? g.resp[st.resPos] : '';
+        resSubtitulo = (g?g.titulo:'')+' · '+(posDef?posDef.desc:'');
+      } else {
+        resTexto = q.resp[st.resPos];
+        resSubtitulo = (q.rep.apodo?q.rep.apodo+' · ':'')+(posDef?posDef.desc:'');
+      }
+    }
+    const miniAreas = {arriba:'a',izquierda:'l',abajo:'b',derecha:'r'};
+    const miniCross = ['a','l','c','r','b'].map(ar => {
+      const hit = st.resPos && miniAreas[st.resPos]===ar;
+      return { style:{gridArea:ar, borderRadius:'4px',
+        background: ar==='c' ? 'rgba(205,189,242,.25)' : (hit?'linear-gradient(135deg,#f0d488,#d9ab55)':'rgba(205,189,242,.12)'),
+        border:'1px solid '+(hit?'rgba(240,212,136,1)':'rgba(205,189,242,.25)'),
+        boxShadow: hit?'0 0 14px rgba(236,200,116,.6)':'none'} };
+    });
+
+    const payOpts = [
+      {n:1, titulo:'1 lectura adicional', sub:'Una pregunta más este mes', precio:'$49'},
+      {n:2, titulo:'2 lecturas adicionales', sub:'Completa tus 3 lecturas del mes', precio:'$79'},
+    ].map(o => ({ ...o,
+      onPick: ()=>this.setState({payPick:o.n}),
+      style:{display:'flex', alignItems:'center', gap:'13px', padding:'14px 16px', borderRadius:'16px', cursor:'pointer',
+        border:'1px solid '+(st.payPick===o.n?'rgba(236,200,116,.9)':'rgba(205,189,242,.2)'),
+        background: st.payPick===o.n?'rgba(236,200,116,.08)':'rgba(10,7,32,.45)', transition:'all .2s ease'},
+      dotStyle:{width:'18px', height:'18px', flex:'0 0 auto', borderRadius:'50%',
+        border:'1.5px solid '+(st.payPick===o.n?'#ecc874':'rgba(205,189,242,.45)'),
+        background: st.payPick===o.n?'radial-gradient(circle at center, #ecc874 45%, transparent 52%)':'transparent'} }));
+
+    return {
+      isIntro: st.step==='intro', isGenero: st.step==='genero', isPregunta: st.step==='pregunta',
+      isConcentra: st.step==='concentra', isTirada: st.step==='tirada', isResultado: st.step==='resultado',
+      usoLabel: usadas+' de 3 lecturas', hasLecturas, noLecturas:!hasLecturas,
+      hasUltima: (()=>{ try { return !!JSON.parse(localStorage.getItem('pa_cruz_last')||'null'); } catch(e){ return false; } })(),
+      ultimaPregunta: (this.ultima()||{}).pregunta||'', ultimaPos: (this.ultima()||{}).pos||'', ultimaCarta: (this.ultima()||{}).carta||'',
+      ultimaTexto: (this.ultima()||{}).texto||'',
+      ultimaFecha: (()=>{ const u=this.ultima(); return u&&u.fecha ? new Date(u.fecha).toLocaleDateString('es-MX',{day:'numeric',month:'long'}) : ''; })(),
+      diasRestantes: (()=>{ try { const nx = Number(localStorage.getItem('pa_cruz_next')||0); return nx>Date.now() ? Math.max(1, Math.ceil((nx-Date.now())/86400000)) : 18; } catch(e){ return 18; } })(),
+      heroCards, generoOpts, catList, centro, preguntaTexto: q?q.texto:'', repLabel,
+      slots,
+      barajando: !!st.barajando, cruzVisible: !st.barajando,
+      shuffleCards: Array.from({length:8}, (_,i)=>({
+        style:{position:'absolute', left:'50%', top:'50%', width:'120px', aspectRatio:'5/7',
+          transform:'translate(-50%,-56%) translateZ('+(i*2.4)+'px) rotateZ('+((i%2?1:-1)*(0.5+i*0.3))+'deg)',
+          transformStyle:'preserve-3d'},
+        innerStyle:{position:'absolute', inset:0, borderRadius:'10px', overflow:'hidden',
+          background:'linear-gradient(160deg,#2a1f57,#150d34 60%,#0b0726)',
+          border:'1px solid rgba(231,207,155,'+(0.35+i*0.06)+')', boxShadow:'0 12px 26px rgba(0,0,0,.5)',
+          animation:(i%2?'pzShufL':'pzShufR')+' '+(this.props.ritmoTirada==='ágil'?0.85:1.1)+'s cubic-bezier(.45,.05,.3,1) '+(i*(this.props.ritmoTirada==='ágil'?0.1:0.135)).toFixed(2)+'s infinite'}})),
+      backEmblemStyle: CO['oros'] ? {position:'absolute',left:'24%',top:'24%',width:'52%',height:'52%',backgroundImage:'url("'+CO['oros']+'")',backgroundSize:'contain',backgroundRepeat:'no-repeat',backgroundPosition:'center'} : {display:'none'},
+      statusText: st.statusText,
+      statusStyle:{marginTop:'14px', minHeight:'20px', fontFamily:"'Cormorant Garamond',serif", fontStyle:'italic', fontSize:'17px',
+        color: st.found?'#ecc874':'rgba(205,189,242,.75)', transition:'color .3s'},
+      resPosNombre, resTexto, resSubtitulo, resCard:resCardP, miniCross,
+      continuarStyle:{height:'54px', borderRadius:'999px', display:'flex', alignItems:'center', justifyContent:'center',
+        cursor: st.preguntaId?'pointer':'default',
+        background: st.preguntaId?'linear-gradient(135deg,#f0d488,#ecc874 55%,#d9ab55)':'rgba(205,189,242,.14)',
+        color: st.preguntaId?'#1c1338':'rgba(205,189,242,.4)', fontWeight:700, fontSize:'15.5px',
+        boxShadow: st.preguntaId?'0 10px 26px rgba(236,200,116,.28)':'none', transition:'all .25s ease'},
+      showPaywall: st.showPaywall, payOpts,
+      comprarStyle:{marginTop:'16px', height:'52px', borderRadius:'999px', display:'flex', alignItems:'center', justifyContent:'center',
+        cursor: st.payPick?'pointer':'default',
+        background: st.payPick?'linear-gradient(135deg,#f0d488,#ecc874 55%,#d9ab55)':'rgba(205,189,242,.14)',
+        color: st.payPick?'#1c1338':'rgba(205,189,242,.4)', fontWeight:700, fontSize:'15px', transition:'all .25s ease'},
+      toast: st.toast,
+      goBack: () => {
+        if (this.state.step==='intro' && this.props.onExit) { this.props.onExit(); return; }
+        this.clearTimers(); this.setState({step:'intro', preguntaId:null, found:false, barajando:false, slots:{arriba:[],izquierda:[],abajo:[],derecha:[]}}); },
+      startRitual: () => this.setState({step:'genero'}),
+      resetDemo: () => {
+        try { ['pa_cruz_last','pa_cruz_mes','pa_cruz_next'].forEach(k=>localStorage.removeItem(k)); } catch(e){}
+        this.clearTimers();
+        this.setState({step:'intro', preguntaId:null, found:false, barajando:false, usadas:0, compradas:0, slots:{arriba:[],izquierda:[],abajo:[],derecha:[]}, toast:'✨ Lecturas restablecidas'});
+        this.after(2400, ()=>this.setState({toast:null}));
+      },
+      confirmPregunta: () => { if (this.state.preguntaId) this.setState({step:'concentra'}); },
+      tirar: this.tirar,
+      guardar: () => { this.setState({toast:'✨ Lectura guardada en Mi camino'}); this.after(2400, ()=>this.setState({toast:null})); },
+      openPaywall: () => this.setState({showPaywall:true, payPick:null}),
+      closePaywall: () => this.setState({showPaywall:false}),
+      comprar: () => { if (!this.state.payPick) return;
+        const nc = Math.min(2, this.state.compradas + this.state.payPick);
+        this.saveMes(this.getUsadas(), nc);
+        this.setState({compradas:nc, showPaywall:false, toast:'🌙 Lecturas añadidas a tu mes'});
+        this.after(2400, ()=>this.setState({toast:null})); },
+    };
+  }
+}
+</script>
+</body>
+</html>
