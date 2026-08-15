@@ -137,9 +137,23 @@ grant execute on function public.limitar_altas(jsonb) to supabase_auth_admin;
 --
 --  Parcial (`where is_anonymous`) porque solo se consultan esas filas: ocupa
 --  menos y se mantiene solo.
-create index if not exists usuarios_anonimos_creado_idx
-  on auth.users (created_at desc)
-  where is_anonymous;
+--
+--  Va envuelto porque `auth.users` es de `supabase_auth_admin`, y no todos los
+--  roles que aplican este archivo la poseen: el del CLI no. Sin envolver, el
+--  error tumba la transacción entera y se pierde la función, que es lo que de
+--  verdad importa. El índice es rendimiento; el tope es la seguridad.
+--
+--  Si sale el aviso, créalo desde el SQL Editor del panel, que corre con más
+--  privilegios. Mientras no exista, el tope FUNCIONA igual: solo cuesta un
+--  recorrido de `auth.users` en cada alta.
+do $$
+begin
+  execute 'create index if not exists usuarios_anonimos_creado_idx'
+       || ' on auth.users (created_at desc) where is_anonymous';
+exception when insufficient_privilege then
+  raise notice 'Sin permiso para indexar auth.users; créalo desde el panel.';
+end;
+$$;
 
 -- ============================================================================
 --  Comprobación

@@ -58,6 +58,11 @@ yarn-error.*
 # gestor de contraseñas — perderla obliga a refirmar todas las futuras.
 keys/
 
+# Permisos locales de Claude Code. Son de esta máquina y de quien la usa, no del
+# proyecto: conceden ejecutar comandos sin preguntar, y eso no se hereda al
+# clonar. La configuración compartida sí se versiona, en `settings.json`.
+.claude/settings.local.json
+
 # typescript
 *.tsbuildinfo
 
