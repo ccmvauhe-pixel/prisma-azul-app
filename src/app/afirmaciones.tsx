@@ -24,13 +24,14 @@ import {
   BotonSecundario,
   EnlaceTenue,
   Pildora,
+  Temporizador,
   Toast,
 } from '@/components/ui';
 import {
-  AFIRMACION_CATEGORIAS,
   type AfirmacionCategoria,
 } from '@/data/afirmaciones';
 import {
+  borrarGuardadosDe,
   guardadoDesde,
   guardar,
   SEMANA_MS,
@@ -43,16 +44,22 @@ import {
   cardBorder,
   color,
   font,
+  fs,
   goldDim,
   lavenderDim,
   radius,
 } from '@/theme/tokens';
+import { abrioSeccion, completoLectura, guardo, vioContenido } from '@/lib/analitica';
+import { useContenido } from '@/lib/contenido';
+import { avisarAhora } from '@/lib/notifications';
 
 type Paso = 'elegir' | 'canalizar' | 'revelar' | 'bloqueado';
 
 export default function Afirmaciones() {
+  useEffect(() => abrioSeccion('afirmaciones'), []);
   const router = useRouter();
   const s = useStore();
+  const { AFIRMACION_CATEGORIAS } = useContenido();
   const [paso, setPaso] = useState<Paso>(() =>
     s.afirmacionLock > Date.now() ? 'bloqueado' : 'elegir',
   );
@@ -105,6 +112,8 @@ export default function Afirmaciones() {
           },
         });
         setPaso('revelar');
+        completoLectura('afirmaciones', { categoria: c.key });
+        vioContenido('afirmaciones', { categoria: c.key, indice: elegida });
       }, 2300),
     );
   }
@@ -154,9 +163,8 @@ export default function Afirmaciones() {
               <FilaCategoria key={c.key} categoria={c} onPress={() => elegir(c)} />
             ))}
           </View>
-          <Text style={styles.pie}>
-            Una afirmación por semana · Repítela y hazla tuya ✦
-          </Text>
+          {/* El kicker de la cabecera ya dice "Una por semana". */}
+          <Text style={styles.pie}>Repítela y hazla tuya ✦</Text>
         </>
       )}
 
@@ -181,28 +189,38 @@ export default function Afirmaciones() {
       )}
 
       {paso === 'revelar' && categoria && (
-        <View style={{ alignItems: 'center', flex: 1 }}>
+        /*
+          Todo el bloque va arriba y seguido: kicker, tarjeta, instrucción y las
+          dos acciones, sin hueco elástico entre medias.
+          Hubo dos intentos antes. El primero tenía un `flex: 1` delante de los
+          botones que los clavaba al borde inferior. El segundo los centraba con
+          `justifyContent`, y eso trae un efecto raro: al retirarse el botón de
+          guardar, el grupo se recoloca y la tarjeta BAJA. Alineado arriba, al
+          desaparecer el primero el segundo sube y nada de lo de encima se mueve.
+        */
+        <View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            /*
+              Sin guardar va arriba, que es donde tienen que estar los dos
+              botones. Guardada, el botón de guardar se retira y quedaría un
+              hueco muerto abajo, así que el bloque se centra y ocupa la
+              pantalla en vez de dejarla a medias.
+            */
+            justifyContent: yaGuardada ? 'center' : 'flex-start',
+          }}
+        >
           <Text style={styles.kickerCat}>Afirmación de {categoria.nombre}</Text>
-          <Text style={styles.tituloGrande}>Tu palabra de la semana</Text>
 
           <TarjetaAfirmacion categoria={categoria} texto={afirmacion} />
 
           <Text style={styles.instruccion}>
             {'Repítela esta semana, en voz alta o en tu mente,\ncada vez que tu energía lo pida.'}
           </Text>
-          <Text style={styles.proxima}>
-            Tu próxima afirmación se abrirá en 7 días.
-          </Text>
 
-          {/* Guardar es lo único que conserva la afirmación: si no, se pierde. */}
-          <Text style={styles.avisoGuardar}>
-            Guárdala para poder volver a leerla. Si no la guardas, se irá con la
-            semana.
-          </Text>
-
-          <View style={{ flex: 1, minHeight: 22 }} />
           <BotonGuardar
-            style={{ marginTop: 18 }}
+            style={{ marginTop: 26 }}
             guardado={yaGuardada}
             etiquetaGuardado="Guardada en Mi Camino ✦"
             onPress={() => {
@@ -212,6 +230,7 @@ export default function Afirmaciones() {
                 texto: afirmacion,
                 categoria: categoria.nombre,
               });
+              guardo('afirmaciones', { categoria: categoria.key });
               mostrarToast('✨ Guardada en Mi Camino');
             }}
           >
@@ -224,18 +243,22 @@ export default function Afirmaciones() {
       )}
 
       {paso === 'bloqueado' && (
-        <View style={{ alignItems: 'center', flex: 1 }}>
-          <PulsoBrillo style={{ marginTop: 40, borderRadius: 37 }}>
+        /*
+          Centrado y sin hueco elástico, igual que Códigos y Oráculo. El
+          `marginTop: 40` del emblema sobra cuando el bloque ya va centrado:
+          desplazaba el conjunto hacia abajo en vez de dejarlo en el medio.
+        */
+        <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}>
+          <PulsoBrillo style={{ borderRadius: 37 }}>
             <View style={styles.circuloBloqueo}>
               <Emblem name="copas" size={38} />
             </View>
           </PulsoBrillo>
 
-          <Text style={styles.bloqueoTitulo}>Tu palabra ya fue entregada</Text>
-          <Text style={styles.cuentaAtras}>{fmtLargo(restante)}</Text>
-          <Text style={styles.bloqueoSub}>
-            {'Una nueva afirmación estará lista entonces.\nMientras tanto, repite la de esta semana.'}
-          </Text>
+          <Temporizador
+            etiqueta="Tu próxima afirmación estará lista en:"
+            valor={fmtLargo(restante)}
+          />
 
           {/* Solo sobrevive lo guardado */}
           {guardada ? (
@@ -253,28 +276,35 @@ export default function Afirmaciones() {
             </View>
           )}
 
-          <View style={{ width: '100%', marginTop: 22 }}>
-            <AvisoNotificacion
-              emblema="copas"
-              cuando="lunes 8:00"
-              mensaje="✨ Tu afirmación de la semana te espera."
-              etiquetaToggle="Avisarme cada semana"
-              activo={s.notif.afirmacion}
-              onToggle={() =>
-                setState((st) => ({
-                  notif: { ...st.notif, afirmacion: !st.notif.afirmacion },
-                }))
-              }
-            />
-          </View>
+          <AvisoNotificacion
+            style={{ marginTop: 22 }}
+            emblema="copas"
+            cuando="lunes 8:00"
+            mensaje="✨ Tu afirmación de la semana te espera."
+            etiquetaToggle="Avisarme cada semana"
+            activo={s.notif.afirmacion}
+            onToggle={() =>
+              setState((st) => ({
+                notif: { ...st.notif, afirmacion: !st.notif.afirmacion },
+              }))
+            }
+          />
 
-          <View style={{ flex: 1, minHeight: 24 }} />
+          <BotonSecundario style={{ marginTop: 22 }} onPress={() => router.back()}>
+            Volver al inicio
+          </BotonSecundario>
+
           <EnlaceTenue
             onPress={() => {
-              setState({ afirmacionLock: 0 });
+              // Sección como recién estrenada: temporizador a 0 y sin nada
+              // guardado. El aviso es el que llegaría al abrirse la semana.
+              setState({ afirmacionLock: 0, afirmacionLast: null });
+              borrarGuardadosDe('afirmacion');
               setPaso('elegir');
               setCat(null);
               setIdx(null);
+              void avisarAhora('✨ Nueva semana, nueva afirmación. Ven a recibirla.');
+              mostrarToast('✨ Sección restablecida');
             }}
           >
             Restablecer (demo)
@@ -360,13 +390,54 @@ function TarjetaAfirmacion({
       />
       <View style={styles.marcoInterior} pointerEvents="none" />
 
-      <Latido>{categoria.motif === 'corazon' ? <Corazon /> : <Moneda />}</Latido>
+      <Latido>
+        <Motivo categoria={categoria} />
+      </Latido>
 
       <Text style={styles.comilla}>“</Text>
       <Text style={styles.afirmTexto}>{texto}</Text>
       <View style={styles.separador} />
       <Text style={styles.sello}>Prisma Azul</Text>
     </LinearGradient>
+  );
+}
+
+/**
+ * El motivo que corona la tarjeta, según la categoría.
+ *
+ * Antes esto era `motif === 'corazon' ? <Corazon/> : <Moneda/>`, y ahí estaba el
+ * fallo: `motif` tiene tres valores —`corazon`, `moneda` y `estrella`— así que
+ * las dos categorías de `estrella` (Trabajo, de espadas, y Salud, de bastos)
+ * caían al `else` y salían con la moneda de oros. Una afirmación de Salud se
+ * coronaba con el emblema de otro palo y en dorado, fuera de su color.
+ */
+function Motivo({ categoria }: { categoria: AfirmacionCategoria }) {
+  if (categoria.motif === 'corazon') return <Corazon />;
+  if (categoria.motif === 'moneda') return <Moneda />;
+  return <Estrella categoria={categoria} />;
+}
+
+/**
+ * Medallón de la categoría: mismo cuerpo que la moneda —círculo de 72, anillo
+ * interior y resplandor— pero teñido con su color y con su propio emblema, para
+ * que Trabajo y Salud se lean como suyas y no como una moneda prestada.
+ */
+function Estrella({ categoria }: { categoria: AfirmacionCategoria }) {
+  const c = categoria.color;
+  return (
+    <View style={[styles.medallon, { borderColor: c, shadowColor: c }]}>
+      <LinearGradient
+        // El color de la categoría en tres intensidades: el degradado de la
+        // moneda, sin fijar el dorado.
+        colors={[`${c}f2`, `${c}b8`, `${c}5c`]}
+        locations={[0, 0.48, 1]}
+        start={{ x: 0.35, y: 0.28 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={[styles.medallonAnillo, { borderColor: `${c}8c` }]} pointerEvents="none" />
+      <Emblem name={categoria.palo} size={34} opacity={0.5} />
+    </View>
   );
 }
 
@@ -420,8 +491,8 @@ const styles = StyleSheet.create({
   intro: {
     textAlign: 'center',
     fontFamily: font.sans,
-    fontSize: 14,
-    lineHeight: 23,
+    fontSize: fs(14),
+    lineHeight: fs(23),
     color: lavenderDim(0.78),
     maxWidth: 320,
     alignSelf: 'center',
@@ -440,18 +511,18 @@ const styles = StyleSheet.create({
   },
   filaCatNombre: {
     fontFamily: font.serif,
-    fontSize: 21,
-    lineHeight: 24,
+    fontSize: fs(21),
+    lineHeight: fs(24),
     color: color.cream,
   },
   filaCatSub: {
     fontFamily: font.sans,
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: fs(12),
+    lineHeight: fs(17),
     color: lavenderDim(0.65),
     marginTop: 3,
   },
-  chevron: { fontFamily: font.serif, fontSize: 24, color: goldDim(0.7) },
+  chevron: { fontFamily: font.serif, fontSize: fs(24), color: goldDim(0.7) },
   etiquetaPronto: {
     borderWidth: 1,
     borderColor: lavenderDim(0.3),
@@ -461,7 +532,7 @@ const styles = StyleSheet.create({
   },
   etiquetaProntoTexto: {
     fontFamily: font.sansBold,
-    fontSize: 10,
+    fontSize: fs(11),
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     color: lavenderDim(0.6),
@@ -469,7 +540,7 @@ const styles = StyleSheet.create({
   pie: {
     textAlign: 'center',
     fontFamily: font.sans,
-    fontSize: 11.5,
+    fontSize: fs(11.5),
     color: lavenderDim(0.45),
     marginTop: 18,
   },
@@ -477,21 +548,21 @@ const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   catNombre: {
     fontFamily: font.serif,
-    fontSize: 26,
+    fontSize: fs(26),
     color: color.cream,
     textAlign: 'center',
   },
-  canalizando: { fontFamily: font.serifItalic, fontSize: 18, color: goldDim(0.9) },
+  canalizando: { fontFamily: font.serifItalic, fontSize: fs(18), color: goldDim(0.9) },
   canalizandoSub: {
     fontFamily: font.sans,
-    fontSize: 12.5,
+    fontSize: fs(12.5),
     color: lavenderDim(0.6),
     marginTop: 8,
   },
 
   kickerCat: {
     fontFamily: font.sansSemi,
-    fontSize: 11,
+    fontSize: fs(11),
     letterSpacing: 2.6,
     textTransform: 'uppercase',
     color: lavenderDim(0.55),
@@ -500,7 +571,7 @@ const styles = StyleSheet.create({
   },
   tituloGrande: {
     fontFamily: font.serif,
-    fontSize: 30,
+    fontSize: fs(30),
     color: color.gold,
     textAlign: 'center',
     marginTop: 4,
@@ -530,15 +601,16 @@ const styles = StyleSheet.create({
   },
   comilla: {
     fontFamily: font.serif,
-    fontSize: 30,
+    fontSize: fs(30),
     color: goldDim(0.55),
     marginTop: 14,
-    lineHeight: 30,
+    lineHeight: fs(30),
   },
+  // La afirmación es lo único que se viene a leer aquí: manda en la tarjeta.
   afirmTexto: {
     fontFamily: font.serifItalicBold,
-    fontSize: 24,
-    lineHeight: 35,
+    fontSize: fs(27),
+    lineHeight: fs(39),
     color: color.cream,
     textAlign: 'center',
     marginTop: 4,
@@ -551,7 +623,7 @@ const styles = StyleSheet.create({
   },
   sello: {
     fontFamily: font.sansSemi,
-    fontSize: 11,
+    fontSize: fs(11),
     letterSpacing: 2.2,
     textTransform: 'uppercase',
     color: lavenderDim(0.55),
@@ -589,6 +661,32 @@ const styles = StyleSheet.create({
     left: -22,
   },
 
+  // Mismo cuerpo que la moneda, con color y emblema de la categoría.
+  medallon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    marginTop: 2,
+    marginBottom: 6,
+    shadowOpacity: 0.55,
+    shadowRadius: 13,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+  },
+  medallonAnillo: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    right: 6,
+    bottom: 6,
+    borderRadius: 30,
+    borderWidth: 1,
+  },
+
   moneda: {
     width: 72,
     height: 72,
@@ -619,25 +717,10 @@ const styles = StyleSheet.create({
 
   instruccion: {
     fontFamily: font.sans,
-    fontSize: 13,
-    lineHeight: 21,
+    fontSize: fs(13),
+    lineHeight: fs(21),
     color: lavenderDim(0.7),
     marginTop: 16,
-    textAlign: 'center',
-  },
-  proxima: {
-    fontFamily: font.serifItalic,
-    fontSize: 15.5,
-    color: lavenderDim(0.7),
-    marginTop: 10,
-    textAlign: 'center',
-  },
-  avisoGuardar: {
-    fontFamily: font.sans,
-    fontSize: 12.5,
-    lineHeight: 19,
-    color: goldDim(0.75),
-    marginTop: 14,
     textAlign: 'center',
   },
 
@@ -649,28 +732,6 @@ const styles = StyleSheet.create({
     borderColor: goldDim(0.45),
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  bloqueoTitulo: {
-    fontFamily: font.serif,
-    fontSize: 26,
-    color: color.cream,
-    marginTop: 22,
-    textAlign: 'center',
-  },
-  cuentaAtras: {
-    fontFamily: font.serifBold,
-    fontSize: 44,
-    color: color.gold,
-    marginTop: 10,
-    letterSpacing: 0.9,
-  },
-  bloqueoSub: {
-    fontFamily: font.sans,
-    fontSize: 12.5,
-    color: lavenderDim(0.65),
-    marginTop: 6,
-    textAlign: 'center',
-    lineHeight: 20,
   },
   cajaUltima: {
     width: '100%',
@@ -685,16 +746,17 @@ const styles = StyleSheet.create({
   },
   cajaUltimaKicker: {
     fontFamily: font.sansSemi,
-    fontSize: 10.5,
+    fontSize: fs(11),
     letterSpacing: 2,
     textTransform: 'uppercase',
     color: goldDim(0.7),
     textAlign: 'center',
   },
+  // Acompaña al aumento de `afirmTexto`: es la misma afirmación, ya guardada.
   cajaUltimaTexto: {
     fontFamily: font.serifItalic,
-    fontSize: 19,
-    lineHeight: 28,
+    fontSize: fs(21),
+    lineHeight: fs(31),
     color: color.cream,
     marginTop: 8,
     textAlign: 'center',

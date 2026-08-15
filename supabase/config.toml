@@ -1,0 +1,617 @@
+# ⚠️ ESTE ARCHIVO NO GOBIERNA EL PROYECTO EN LA NUBE. LEE ESTO PRIMERO.
+#
+# Es la configuración del CLI para desarrollo LOCAL (`supabase start`). El
+# proyecto de producción se configura desde el panel, y `supabase/README.md`
+# dice que el flujo de trabajo aquí es pegar SQL en el SQL Editor. El SQL
+# pegado surte efecto; este `.toml`, si nadie lo sube, no surte ninguno.
+#
+# O sea: todo lo que hay aquí abajo es DOCUMENTACIÓN de cómo debería estar el
+# panel, no una garantía de cómo está. La diferencia importa mucho en cuatro
+# sitios, porque son controles de seguridad de verdad:
+#
+#   · minimum_password_length = 8   → si el panel no lo tiene, el mínimo real
+#                                     son 6, y la regla de 8 vive solo en React
+#                                     (que se salta llamando a la API).
+#   · [auth.email] enable_signup    → si el panel no lo tiene cerrado, los
+#                                     endpoints de registro por correo siguen
+#                                     abiertos, sin CAPTCHA y sin tráfico
+#                                     legítimo con el que notar el abuso.
+#   · [auth.rate_limit]             → los topes por IP pueden estar en los
+#                                     valores por defecto de Supabase.
+#   · otp_expiry / max_frequency    → la ventana del enlace de recuperación.
+#
+# La lista para cotejarla con el panel, una por una, está en `PUBLICACION.md`
+# §4. Hazlo antes de publicar.
+#
+# Y OJO con `npx supabase config push`: sube el archivo ENTERO, no tiene
+# `--dry-run`, y sobrescribe cualquier ajuste hecho desde el panel que no esté
+# escrito aquí.
+#
+# For detailed configuration reference documentation, visit:
+# https://supabase.com/docs/guides/local-development/cli/config
+# A string used to distinguish different Supabase projects on the same host. Defaults to the
+# working directory name when running `supabase init`.
+project_id = "Prisma-Azul-App"
+
+[api]
+enabled = true
+# Port to use for the API URL.
+port = 54321
+# Schemas to expose in your API. Tables, views and stored procedures in this schema will get API
+# endpoints. `public` and `graphql_public` schemas are included by default.
+schemas = ["public", "graphql_public"]
+# Extra schemas to add to the search_path of every request.
+extra_search_path = ["public", "extensions"]
+# The maximum number of rows returns from a view, table, or stored procedure. Limits payload size
+# for accidental or malicious requests.
+max_rows = 1000
+# Controls whether new tables, views, sequences and functions created in the `public` schema by
+# `postgres` are reachable through the Data API roles (`anon`, `authenticated`, `service_role`)
+# without explicit GRANTs. When unset, new entities are NOT auto-exposed, matching the new cloud
+# default. Set to `true` to keep the legacy behaviour of auto-exposing new entities; this is
+# deprecated and the field is removed on 2026-10-30 once the always-revoked behaviour is permanent.
+# auto_expose_new_tables = true
+
+[api.tls]
+# Enable HTTPS endpoints locally using a self-signed certificate.
+enabled = false
+# Paths to self-signed certificate pair.
+# cert_path = "../certs/my-cert.pem"
+# key_path = "../certs/my-key.pem"
+
+[db]
+# Port to use for the local database URL.
+port = 54322
+# Port used by db diff command to initialize the shadow database.
+shadow_port = 54320
+# Maximum amount of time to wait for health check when starting the local database.
+health_timeout = "2m"
+# The database major version to use. This has to be the same as your remote database's. Run `SHOW
+# server_version;` on the remote database to check.
+major_version = 17
+
+[db.pooler]
+enabled = false
+# Port to use for the local connection pooler.
+port = 54329
+# Specifies when a server connection can be reused by other clients.
+# Configure one of the supported pooler modes: `transaction`, `session`.
+pool_mode = "transaction"
+# How many server connections to allow per user/database pair.
+default_pool_size = 20
+# Maximum number of client connections allowed.
+max_client_conn = 100
+
+# [db.vault]
+# secret_key = "env(SECRET_VALUE)"
+
+[db.migrations]
+# If disabled, migrations will be skipped during a db push or reset.
+enabled = true
+# Specifies an ordered list of schema files, directories, or glob patterns that describe your database.
+# Supports paths relative to supabase directory: "./schemas/*.sql", "./database".
+schema_paths = []
+
+[db.seed]
+# If enabled, seeds the database after migrations during a db reset.
+enabled = true
+# Specifies an ordered list of seed files to load during db reset.
+# Supports glob patterns relative to supabase directory: "./seeds/*.sql"
+sql_paths = ["./seed.sql"]
+
+[db.network_restrictions]
+# Enable management of network restrictions.
+enabled = false
+# List of IPv4 CIDR blocks allowed to connect to the database.
+# Defaults to allow all IPv4 connections. Set empty array to block all IPs.
+allowed_cidrs = ["0.0.0.0/0"]
+# List of IPv6 CIDR blocks allowed to connect to the database.
+# Defaults to allow all IPv6 connections. Set empty array to block all IPs.
+allowed_cidrs_v6 = ["::/0"]
+
+# Uncomment to reject non-secure connections to the database.
+# [db.ssl_enforcement]
+# enabled = true
+
+[realtime]
+enabled = true
+# Bind realtime via either IPv4 or IPv6. (default: IPv4)
+# ip_version = "IPv6"
+# The maximum length in bytes of HTTP request headers. (default: 4096)
+# max_header_length = 4096
+
+[studio]
+enabled = true
+# Port to use for Supabase Studio.
+port = 54323
+# External URL of the API server that frontend connects to.
+api_url = "http://127.0.0.1"
+# OpenAI API Key to use for Supabase AI in the Supabase Studio.
+openai_api_key = "env(OPENAI_API_KEY)"
+
+# Email testing server. Emails sent with the local dev setup are not actually sent - rather, they
+# are monitored, and you can view the emails that would have been sent from the web interface.
+[local_smtp]
+enabled = true
+# Port to use for the email testing server web interface.
+port = 54324
+# Uncomment to expose additional ports for testing user applications that send emails.
+# smtp_port = 54325
+# pop3_port = 54326
+# admin_email = "admin@email.com"
+# sender_name = "Admin"
+
+[storage]
+enabled = true
+# The maximum file size allowed (e.g. "5MB", "500KB").
+file_size_limit = "50MiB"
+
+# Uncomment to configure local storage buckets
+# [storage.buckets.images]
+# public = false
+# file_size_limit = "50MiB"
+# allowed_mime_types = ["image/png", "image/jpeg"]
+# objects_path = "./images"
+
+# Allow connections via S3 compatible clients
+[storage.s3_protocol]
+enabled = true
+
+# Image transformation API is available to Supabase Pro plan.
+# [storage.image_transformation]
+# enabled = true
+
+# Store analytical data in S3 for running ETL jobs over Iceberg Catalog
+# This feature is only available on the hosted platform.
+[storage.analytics]
+enabled = false
+max_namespaces = 5
+max_tables = 10
+max_catalogs = 2
+
+# Analytics Buckets is available to Supabase Pro plan.
+# [storage.analytics.buckets.my-warehouse]
+
+# Store vector embeddings in S3 for large and durable datasets
+[storage.vector]
+enabled = true
+max_buckets = 10
+max_indexes = 5
+
+# Vector Buckets is available to Supabase Pro plan.
+# [storage.vector.buckets.documents-openai]
+
+[auth]
+enabled = true
+# The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
+# in emails.
+# Prisma Azul es una app nativa, no un sitio web: el esquema propio hace de base.
+site_url = "prismaazul://auth-callback"
+# The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
+# external_url = ""
+# A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
+#
+# Hacen falta las dos. En una build instalada la app responde a `prismaazul://`,
+# pero en Expo Go vive dentro de Expo y responde a `exp://<host>/--/...`. Sin la
+# segunda, el enlace de recuperación abre y no hace nada durante el desarrollo.
+#
+# Si cambias de red, la IP cambia y hay que actualizar la de Expo Go (o usar el
+# túnel, que da una URL estable).
+additional_redirect_urls = [
+  "prismaazul://auth-callback",
+]
+# Las de Expo Go salieron de aquí a propósito.
+#
+# `exp://192.168.5.143:8081/--/auth-callback` era la IP de una red concreta de
+# desarrollo. En la lista de producción, quien ocupe esa IP en una red donde
+# alguien abra un enlace de recuperación recibe el `code`. Con PKCE no le sirve
+# de nada — el verificador se quedó en el otro teléfono — pero no hay motivo
+# para dejar puesta una dirección que ya no es de nadie.
+#
+# Para desarrollo, vuelve a añadirlas en local sin subirlas, o usa el túnel
+# (`npx expo start --tunnel`), que da una URL estable y no depende de la red.
+# How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
+jwt_expiry = 3600
+# JWT issuer URL. If not set, defaults to auth.external_url.
+# jwt_issuer = ""
+# Path to JWT signing key. DO NOT commit your signing keys file to git.
+# signing_keys_path = "./signing_keys.json"
+# If disabled, the refresh token will never expire.
+enable_refresh_token_rotation = true
+# Allows refresh tokens to be reused after expiry, up to the specified interval in seconds.
+# Requires enable_refresh_token_rotation = true.
+refresh_token_reuse_interval = 10
+# Allow/disallow new user signups to your project.
+enable_signup = true
+# Allow/disallow anonymous sign-ins to your project.
+#
+# Es lo que sostiene el acceso actual: la app crea una sesión anónima sola, sin
+# contraseña y sin enviar ningún correo. El nombre y el correo se piden en el
+# onboarding y viven en `perfiles`, no en `auth.users`.
+#
+# Provisional a propósito: sin contraseña, los datos van atados a este
+# dispositivo. Cuando haya dominio y SMTP, esa misma cuenta anónima se puede
+# convertir en una con correo y contraseña sin perder nada
+# (`enable_manual_linking` abajo es la pieza que lo permite).
+enable_anonymous_sign_ins = true
+# Allow/disallow testing manual linking of accounts
+enable_manual_linking = true
+# Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
+#
+# 8 para que coincida con `MINIMO` en `CampoPassword.tsx` y con lo que valida
+# `auth.ts`. Antes el mínimo real era 6: la regla de 8 vivía solo en React, y
+# eso se salta llamando a la API de Supabase directamente — el mismo agujero
+# que `002-endurecer.sql` §4 cerró para la edad mínima.
+minimum_password_length = 8
+# Passwords that do not meet the following requirements will be rejected as weak. Supported values
+# are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
+password_requirements = "letters_digits"
+
+# Configure passkey sign-ins.
+# [auth.passkey]
+# enabled = false
+
+# Configure WebAuthn relying party settings (required when passkey is enabled).
+# [auth.webauthn]
+# rp_display_name = "Supabase"
+# rp_id = "localhost"
+# rp_origins = ["http://127.0.0.1:3000"]
+
+[auth.rate_limit]
+# Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
+email_sent = 2
+# Number of SMS messages that can be sent per hour. Requires auth.sms to be enabled.
+sms_sent = 30
+# Number of anonymous sign-ins that can be made per hour per IP address. Requires enable_anonymous_sign_ins = true.
+anonymous_users = 30
+# Number of sessions that can be refreshed in a 5 minute interval per IP address.
+token_refresh = 150
+# Number of sign up and sign-in requests that can be made in a 5 minute interval per IP address (excludes anonymous users).
+sign_in_sign_ups = 30
+# Number of OTP / Magic link verifications that can be made in a 5 minute interval per IP address.
+token_verifications = 30
+# Number of Web3 logins that can be made in a 5 minute interval per IP address.
+web3 = 30
+
+# Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
+#
+# ⚠️ PENDIENTE, y es la pieza que falta del hallazgo grave de la auditoría.
+#
+# Por qué ya no es solo cosa de `PantallaAcceso`: `anonymous_users = 30` de
+# arriba es, HOY, lo único que limita cuántas cuentas se crean — y las cuentas
+# no caducan, así que se acumulan. El tope de 200 eventos/hora de
+# `003-limite-eventos.sql` mide por persona, y las personas son gratis: desde
+# una sola IP, a las doce horas hay 360 cuentas escribiendo 72.000 eventos por
+# hora. El plan gratuito se llena en menos de un día y la base deja de escribir
+# para todo el mundo.
+#
+# `004-cuentas-y-validacion.sql` pone un techo global y una purga, que aguantan
+# el golpe. Pero lo que corta el problema de raíz es esto: que crear cuentas
+# cueste.
+#
+# ⚠️ LOS DOS LADOS DEL CAMBIO VAN JUNTOS, en el mismo commit. Activarlo aquí
+#    sin mandar el `captchaToken` desde la app rechaza TODAS las peticiones de
+#    auth — incluida `signInAnonymously`, que es el arranque. La app no abre.
+#
+#   1. Aquí: descomentar, elegir `provider`, y el secreto SIEMPRE por variable
+#      de entorno — nunca escrito en este archivo.
+#   2. En `auth.ts`: pasar `options: { captchaToken }` en `signInAnonymously`
+#      (lo primero, es el acceso real) y, cuando se conecte `PantallaAcceso`,
+#      también en `signUp`, `signInWithPassword` y `resetPasswordForEmail`.
+#
+# Turnstile necesita cuenta de Cloudflare, así que esto no se puede dejar hecho
+# desde el repositorio: hay que darlo de alta y guardar el secreto.
+#
+# [auth.captcha]
+# enabled = true
+# provider = "turnstile"
+# secret = "env(TURNSTILE_SECRET)"
+
+[auth.email]
+# Allow/disallow new user signups via email to your project.
+#
+# Cerrado a propósito, y es el `enable_signup` de ESTA sección, no el de
+# `[auth]`. La diferencia importa: el global gobierna también el alta anónima
+# —que es el acceso real de la app— así que ponerlo a `false` allí arriba deja
+# la app sin poder arrancar. Aquí solo se cierra el registro con correo.
+#
+# El motivo: `PantallaAcceso` no la importa nadie (el acceso es anónimo, ver
+# `entrarAnonimo` en `_layout.tsx`), pero los endpoints seguían vivos en la API.
+# Una superficie de autenticación expuesta que ningún usuario real pisa es la
+# peor clase: sin CAPTCHA, y sin tráfico legítimo con el que notar el abuso.
+# Con esto abierto se podía enumerar qué direcciones tienen cuenta, probar
+# credenciales contra ellas y disparar correos de confirmación hacia buzones
+# ajenos quemando la reputación del remitente.
+#
+# Se reabre EN EL MISMO CAMBIO que conecte `PantallaAcceso`, junto con
+# `[auth.captcha]`. Ver la nota de la sección `[auth.rate_limit]`.
+enable_signup = false
+# If enabled, a user will be required to confirm any email change on both the old, and new email
+# addresses. If disabled, only the new email is required to confirm.
+double_confirm_changes = true
+# If enabled, users need to confirm their email address before signing in.
+#
+# El correo es el ÚNICO factor de recuperación que tiene la app: no hay MFA, no
+# hay teléfono. Sin confirmar, cualquiera se registra con una dirección que no
+# es suya, y el buzón que puede recuperar esa cuenta es de otra persona.
+#
+# Pesa más de lo que parece porque `schema.sql` (líneas 166-169) planea usar
+# `perfiles.correo` para convertir las cuentas anónimas de hoy en cuentas de
+# verdad. Convertir una cuenta sobre una dirección sin verificar es entregársela
+# a quien tenga ese buzón.
+#
+# Activarlo hoy no rompe nada: el acceso actual es anónimo y no usa correo, y
+# `PantallaAcceso` ni se renderiza. Lo que sí hace falta ANTES de conectar esa
+# pantalla es SMTP propio (ver `supabase/CORREO.md`) — con el SMTP de cortesía
+# son 2 correos por hora en total y los registros reales se quedarían fuera.
+enable_confirmations = true
+# If enabled, users will need to reauthenticate or have logged in recently to change their password.
+#
+# Esta app vive en un teléfono, así que el atacante realista no es remoto: es
+# quien tiene el aparato desbloqueado un minuto. Sin esto, entra en el perfil,
+# pone una contraseña nueva y deja fuera a la dueña para siempre, quedándose con
+# el historial y con el nombre, correo y fecha de nacimiento.
+#
+# `traducirError` en `auth.ts` ya traduce el `reauthentication needed` que
+# Supabase devuelve a partir de ahora; sin ese caso la pantalla se quedaba muda.
+secure_password_change = true
+# Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
+#
+# 60s, no 1s. Hoy lo tapa el límite de cortesía (`email_sent = 2` por hora),
+# pero en cuanto entre el SMTP de Resend, un segundo entre correos convierte el
+# "olvidé mi contraseña" en una forma de inundar el buzón de cualquier dirección
+# conocida — pagando tú cada envío y quemando la reputación del dominio.
+max_frequency = "60s"
+# Number of characters used in the email OTP.
+otp_length = 6
+# Number of seconds before the email OTP expires (defaults to 1 hour).
+#
+# 15 minutos, no la hora que trae por defecto.
+#
+# Este mismo valor gobierna el enlace de recuperación de contraseña, que es un
+# token de acceso a la cuenta viajando por correo — el canal menos controlado
+# que hay. Una hora es una hora de ventana en la que ese enlace sigue sirviendo
+# en cualquier buzón reenviado, en el historial de un cliente de correo web o en
+# una copia de seguridad del teléfono.
+#
+# 15 minutos siguen siendo de sobra para abrir un correo que acabas de pedir, y
+# quien tarde más solo tiene que volver a pedirlo. PKCE ya impide que el enlace
+# sirva en otro dispositivo (`supabase.ts:63`); esto acorta la ventana en el
+# propio.
+otp_expiry = 900
+
+# Servidor de correo para producción.
+#
+# Sin esto, Supabase usa su SMTP de cortesía: 2 correos por hora en total y sin
+# garantía de entrega. Sirve para que tú pruebes, no para tus usuarias.
+#
+# Para activarlo (ver supabase/CORREO.md):
+#   1. Quita los # de este bloque.
+#   2. Pon RESEND_API_KEY en tu entorno — la clave NO se escribe aquí.
+#   3. npx supabase config push
+#
+# [auth.email.smtp]
+# enabled = true
+# host = "smtp.resend.com"
+# port = 465
+# user = "resend"
+# pass = "env(RESEND_API_KEY)"
+# admin_email = "hola@tudominio.com"
+# sender_name = "Prisma Azul"
+
+# Uncomment to customize email template
+# [auth.email.template.invite]
+# subject = "You have been invited"
+# content_path = "./supabase/templates/invite.html"
+
+# Uncomment to customize notification email template
+# [auth.email.notification.password_changed]
+# enabled = true
+# subject = "Your password has been changed"
+# content_path = "./templates/password_changed_notification.html"
+
+[auth.sms]
+# Allow/disallow new user signups via SMS to your project.
+enable_signup = false
+# If enabled, users need to confirm their phone number before signing in.
+enable_confirmations = false
+# Template for sending OTP to users
+template = "Your code is {{ `{{ .Code }}` }}"
+# Controls the minimum amount of time that must pass before sending another sms otp.
+max_frequency = "5s"
+
+# Use pre-defined map of phone number to OTP for testing.
+# [auth.sms.test_otp]
+# 4152127777 = "123456"
+
+# Configure logged in session timeouts.
+#
+# Sin esto, el refresh token no caduca nunca: una sesión robada una vez es una
+# sesión robada para siempre. Es lo que hace que el teléfono desbloqueado un
+# minuto (ver `secure_password_change` arriba) sea un problema permanente y no
+# uno pasajero.
+#
+# Los números están elegidos para no molestar a nadie real: 30 días de tope duro
+# y 7 sin abrir la app. Quien la usa cada semana —que es el ritmo que proponen
+# los rituales— no ve nunca la pantalla de acceso.
+#
+# ⚠️ SIGUEN DESACTIVADOS A PROPÓSITO. NO los actives todavía.
+#
+# Con las cuentas anónimas de hoy, cerrar sesión no es "volver a entrar": es
+# perder la cuenta. No hay contraseña ni correo con los que regresar, así que la
+# sesión ES la cuenta (`auth.ts:140-141`).
+#
+# Un `timebox` activo ahora sería un borrado programado de los datos de TODAS
+# las personas: a los 30 días, o a los 7 sin abrir la app, se cierra la sesión,
+# `entrarAnonimo()` crea una cuenta nueva vacía y las lecturas, los
+# temporizadores y el perfil quedan inalcanzables. El cierre de sesión no avisa
+# y nadie lo relaciona con nada.
+#
+# Es decir: la protección contra el teléfono robado, aplicada hoy, hace más daño
+# que el ataque del que protege.
+#
+# Cuándo activarlos: en el mismo cambio que conecte `PantallaAcceso` y convierta
+# las cuentas anónimas en cuentas con contraseña. Ni antes.
+#
+# [auth.sessions]
+# timebox = "720h"           # 30 días de tope duro
+# inactivity_timeout = "168h" # 7 días sin abrir la app
+
+# This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.
+# Tope global de altas de cuenta. Es la raíz del hallazgo grave de la auditoría:
+# hasta ahora crear cuentas era gratis e ILIMITADO en conjunto, y el tope de 200
+# eventos/hora de `003` mide por persona — con las personas gratis, no limita
+# nada. La función está en `005-tope-de-altas.sql`: 300 altas anónimas por hora
+# en total, y falla hacia abierto si se rompe.
+#
+# ⚠️ DESCOMENTAR SOLO DESPUÉS DE APLICAR `005-tope-de-altas.sql`.
+#
+#    Si el hook se activa y la función no existe, Supabase rechaza TODA alta de
+#    usuario. El acceso de esta app es una sesión anónima que se abre sola al
+#    arrancar, así que eso significa que NADIE que instale la app puede entrar.
+#    Es un apagón autoinfligido, y desde fuera parece que la app está rota.
+#
+#    Orden: (1) aplicar el SQL · (2) comprobar con las consultas del final de
+#    ese archivo · (3) descomentar esto y `supabase config push`, o activarlo en
+#    el panel (Authentication → Hooks) · (4) desinstalar y reinstalar la app
+#    para confirmar que se sigue entrando.
+#
+#    Es el único interruptor que la auditoría dejó sin accionar a propósito:
+#    encenderlo en el orden equivocado se nota tarde y mal.
+#
+# [auth.hook.before_user_created]
+# enabled = true
+# uri = "pg-functions://postgres/public/limitar_altas"
+
+# This hook runs before a token is issued and allows you to add additional claims based on the authentication method used.
+# [auth.hook.custom_access_token]
+# enabled = true
+# uri = "pg-functions://<database>/<schema>/<hook_name>"
+
+# Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
+[auth.sms.twilio]
+enabled = false
+account_sid = ""
+message_service_sid = ""
+# DO NOT commit your Twilio auth token to git. Use environment variable substitution instead:
+auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
+
+# Multi-factor-authentication is available to Supabase Pro plan.
+[auth.mfa]
+# Control how many MFA factors can be enrolled at once per user.
+max_enrolled_factors = 10
+
+# Control MFA via App Authenticator (TOTP)
+[auth.mfa.totp]
+enroll_enabled = false
+verify_enabled = false
+
+# Configure MFA via Phone Messaging
+[auth.mfa.phone]
+enroll_enabled = false
+verify_enabled = false
+otp_length = 6
+template = "Your code is {{ `{{ .Code }}` }}"
+max_frequency = "5s"
+
+# Configure MFA via WebAuthn
+# [auth.mfa.web_authn]
+# enroll_enabled = true
+# verify_enabled = true
+
+# Use an external OAuth provider. The full list of providers are: `apple`, `azure`, `bitbucket`,
+# `discord`, `facebook`, `github`, `gitlab`, `google`, `keycloak`, `linkedin_oidc`, `notion`, `twitch`,
+# `twitter`, `x`, `slack`, `spotify`, `workos`, `zoom`.
+[auth.external.apple]
+enabled = false
+client_id = ""
+# DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
+secret = "env(SUPABASE_AUTH_EXTERNAL_APPLE_SECRET)"
+# Overrides the default auth callback URL derived from auth.external_url.
+redirect_uri = ""
+# Overrides the default auth provider URL. Used to support self-hosted gitlab, single-tenant Azure,
+# or any other third-party OIDC providers.
+url = ""
+# If enabled, the nonce check will be skipped. Required for local sign in with Google auth.
+skip_nonce_check = false
+# If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
+email_optional = false
+
+# Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.
+# You can configure "web3" rate limit in the [auth.rate_limit] section and set up [auth.captcha] if self-hosting.
+[auth.web3.solana]
+enabled = false
+
+# Use Firebase Auth as a third-party provider alongside Supabase Auth.
+[auth.third_party.firebase]
+enabled = false
+# project_id = "my-firebase-project"
+
+# Use Auth0 as a third-party provider alongside Supabase Auth.
+[auth.third_party.auth0]
+enabled = false
+# tenant = "my-auth0-tenant"
+# tenant_region = "us"
+
+# Use AWS Cognito (Amplify) as a third-party provider alongside Supabase Auth.
+[auth.third_party.aws_cognito]
+enabled = false
+# user_pool_id = "my-user-pool-id"
+# user_pool_region = "us-east-1"
+
+# Use Clerk as a third-party provider alongside Supabase Auth.
+[auth.third_party.clerk]
+enabled = false
+# Obtain from https://clerk.com/setup/supabase
+# domain = "example.clerk.accounts.dev"
+
+# OAuth server configuration
+[auth.oauth_server]
+# Enable OAuth server functionality
+enabled = false
+# Path for OAuth consent flow UI
+authorization_url_path = "/oauth/consent"
+# Allow dynamic client registration
+allow_dynamic_registration = false
+
+[edge_runtime]
+enabled = true
+# Supported request policies: `oneshot`, `per_worker`.
+# `per_worker` (default) — enables hot reload during local development.
+# `oneshot` — fallback mode if hot reload causes issues (e.g. in large repos or with symlinks).
+policy = "per_worker"
+# Port to attach the Chrome inspector for debugging edge functions.
+inspector_port = 8083
+# The Deno major version to use.
+deno_version = 2
+
+# [edge_runtime.secrets]
+# secret_key = "env(SECRET_VALUE)"
+
+[analytics]
+enabled = true
+port = 54327
+# Configure one of the supported backends: `postgres`, `bigquery`.
+backend = "postgres"
+
+# Experimental features may be deprecated any time
+[experimental]
+# Configures Postgres storage engine to use OrioleDB (S3)
+orioledb_version = ""
+# Configures S3 bucket URL, eg. <bucket_name>.s3-<region>.amazonaws.com
+s3_host = "env(S3_HOST)"
+# Configures S3 bucket region, eg. us-east-1
+s3_region = "env(S3_REGION)"
+# Configures AWS_ACCESS_KEY_ID for S3 bucket
+s3_access_key = "env(S3_ACCESS_KEY)"
+# Configures AWS_SECRET_ACCESS_KEY for S3 bucket
+s3_secret_key = "env(S3_SECRET_KEY)"
+
+# pg-delta is the schema diff engine for db diff / db pull / db remote commit.
+# Set enabled = false to fall back to the legacy migra engine.
+[experimental.pgdelta]
+enabled = true
+# Directory under `supabase/` where declarative files are written.
+# declarative_schema_path = "./database"
+# JSON string passed through to pg-delta SQL formatting.
+# format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"

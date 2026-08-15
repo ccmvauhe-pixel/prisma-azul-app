@@ -33,8 +33,29 @@ yarn-error.*
 .DS_Store
 *.pem
 
+# ...menos el certificado de firma OTA, que SÍ tiene que llegar a EAS: es lo que
+# se embebe en la app para que el teléfono pueda comprobar la firma de cada
+# actualización. Es público. La clave privada firma en local y se queda fuera
+# (ver `keys/` más abajo).
+!certs/certificate.pem
+
 # variables locales
+#
+# `.env` también, igual que en .gitignore. EAS inyecta las variables desde su
+# panel (`eas env:create`), así que el fichero local no hace falta para
+# compilar; dejarlo fuera evita que un secreto futuro viaje sin querer a un
+# tercero. Ojo: sin las variables dadas de alta en EAS, la build de producción
+# falla al arrancar a propósito (ver `supabase.ts`).
+.env
 .env*.local
+
+# Clave privada de firma de las actualizaciones OTA.
+#
+# Igual que `.env`: la firma se hace en local al publicar (`eas update`), no en
+# los servidores de EAS, así que la clave no hace ninguna falta para compilar.
+# Lo que sí viaja es el certificado de `certs/`, que es público y es lo que el
+# teléfono usa para comprobar la firma.
+keys/
 
 # typescript
 *.tsbuildinfo
@@ -44,6 +65,15 @@ example
 # carpetas nativas generadas
 /ios
 /android
+
+# Estado local del CLI de Supabase: la cadena de conexión del pooler y la
+# referencia del proyecto. No interviene en la compilación y no tiene por qué
+# acabar en los servidores de EAS.
+supabase/.temp/
+
+# Banco de pruebas del esquema: se ejecuta a mano en local (ver su README) y no
+# interviene en la compilación.
+supabase/pruebas/
 
 # --- Material de origen: no interviene en la compilación ---
 # El bundle de diseño pesa ~48 MB (PDFs y PNGs de referencia) y las demos de

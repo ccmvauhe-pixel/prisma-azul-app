@@ -11,10 +11,25 @@ import { useSyncExternalStore } from 'react';
 
 import type { PosKey } from '@/data/cruz';
 
-/** Duraciones de cada ritual. La Cruz es mensual; Afirmaciones y Códigos, semanales. */
+/** Duraciones de cada lectura. Todas semanales desde el cambio de ritmo. */
 export const DIA_MS = 86_400_000;
 export const SEMANA_MS = 7 * DIA_MS;
 export const MES_MS = 30 * DIA_MS;
+
+/**
+ * Cruz de Vida: ritmo semanal.
+ *
+ * Una lectura gratis cada semana y hasta dos adicionales, con un tope duro de
+ * tres por semana. El tope existe para que la Cruz siga siendo un acto medido:
+ * si se pudieran encadenar lecturas sin límite dejaría de tener peso, y además
+ * invitaría a repetir la misma pregunta hasta obtener la respuesta deseada.
+ *
+ * Hoy no hay forma de conseguir esas dos adicionales dentro de la app: el
+ * contador existe, pero se queda en cero. El día que haya cobros, ese es el
+ * único punto que hay que alimentar.
+ */
+export const CRUZ_GRATIS_SEMANA = 1;
+export const CRUZ_MAX_SEMANA = 3;
 
 export type AfirmacionLast = {
   cat: string;
@@ -85,13 +100,26 @@ export type State = {
   cruzLast: CruzLast | null;
   /** Timestamp de la próxima lectura gratis */
   cruzNext: number;
-  /** Control de la lectura mensual: `ym` = 'YYYY-M' */
-  cruzMes: { ym: string; usadas: number } | null;
+  /**
+   * Consumo de la semana en curso. `wk` es la llave del lunes (ver `semanaKey`),
+   * así que al cambiar de semana el contador se ignora y vuelve a empezar solo,
+   * sin necesidad de una tarea que lo reinicie.
+   */
+  cruzSemana: { wk: string; usadas: number } | null;
+  /**
+   * Lecturas adicionales disponibles y sin usar.
+   *
+   * No caducan al terminar la semana: una vez concedida, se conserva hasta
+   * gastarla. Lo que sí aplica siempre es el tope de `CRUZ_MAX_SEMANA`.
+   *
+   * En la versión gratuita siempre vale cero — nada la incrementa todavía.
+   */
+  cruzExtras: number;
 
   /** Historial de lo que el usuario eligió guardar (máx. 60, más reciente primero) */
   guardados: Guardado[];
 
-  /** Preferencias de aviso por ritual */
+  /** Preferencias de aviso por lectura */
   notif: { afirmacion: boolean; codigo: boolean; oraculo: boolean; cruz: boolean };
 };
 
@@ -104,7 +132,8 @@ const EMPTY: State = {
   codigoActivo: null,
   cruzLast: null,
   cruzNext: 0,
-  cruzMes: null,
+  cruzSemana: null,
+  cruzExtras: 0,
   guardados: [],
   notif: { afirmacion: true, codigo: true, oraculo: true, cruz: true },
 };
@@ -116,10 +145,12 @@ const MAX_GUARDADOS = 60;
 
 /**
  * Tipos de los que solo se conserva la entrega más reciente: al guardar una
- * nueva, la anterior se descarta. El Oráculo funciona así — cada lectura
- * reemplaza a la anterior en vez de acumularse.
+ * nueva, la anterior se descarta.
+ *
+ * Están los cuatro: ninguna sección acumula historial. Lo guardado es siempre
+ * "lo último", y lo anterior desaparece en cuanto llega un reemplazo.
  */
-const SOLO_ULTIMO: Guardado['tipo'][] = ['oraculo'];
+const SOLO_ULTIMO: Guardado['tipo'][] = ['oraculo', 'cruz', 'afirmacion', 'codigo'];
 
 let state: State = EMPTY;
 let hydrated = false;
@@ -136,6 +167,16 @@ function subscribe(listener: () => void) {
   };
 }
 
+/**
+ * Escucha los cambios del estado desde fuera de React.
+ *
+ * Lo usa la sincronización con Supabase para enterarse de cuándo hay algo que
+ * subir. Devuelve la función para dejar de escuchar.
+ */
+export function suscribir(listener: () => void): () => void {
+  return subscribe(listener);
+}
+
 async function persist() {
   try {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -144,19 +185,39 @@ async function persist() {
   }
 }
 
+/**
+ * Migración del ritmo mensual al semanal.
+ *
+ * El estado viejo llevaba `cruzMes: { ym, usadas }` y un `cruzNext` a treinta
+ * días vista. Ese cupo ya no significa nada bajo las reglas nuevas, así que en
+ * vez de intentar convertirlo se descarta y la persona entra a la semana en
+ * curso con su lectura gratis disponible.
+ *
+ * Se resuelve a favor del usuario a propósito: cambiamos las reglas a mitad de
+ * partida, y dejar a alguien esperando por un contador de un sistema que ya no
+ * existe sería castigarlo por una decisión nuestra.
+ */
+type EstadoLegado = Partial<State> & { cruzMes?: { ym: string; usadas: number } | null };
+
+function migrarACruzSemanal(cargado: EstadoLegado): Partial<State> {
+  if (!('cruzMes' in cargado)) return cargado;
+  const { cruzMes: _descartado, ...resto } = cargado;
+  return { ...resto, cruzSemana: null, cruzExtras: cargado.cruzExtras ?? 0, cruzNext: 0 };
+}
+
 /** Carga el estado guardado. Llamar una sola vez, al arrancar la app. */
 export async function hydrate(): Promise<void> {
   if (hydrated) return;
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (raw) {
-      state = { ...EMPTY, ...(JSON.parse(raw) as Partial<State>) };
+      state = { ...EMPTY, ...migrarACruzSemanal(JSON.parse(raw) as EstadoLegado) };
     } else {
       // Migración desde v1: el Oráculo pasó a conservar solo la última lectura,
       // así que su historial acumulado se descarta una única vez.
       const previo = await AsyncStorage.getItem(STORAGE_KEY_V1);
       if (previo) {
-        const v1 = { ...EMPTY, ...(JSON.parse(previo) as Partial<State>) };
+        const v1 = { ...EMPTY, ...migrarACruzSemanal(JSON.parse(previo) as EstadoLegado) };
         state = {
           ...v1,
           guardados: v1.guardados.filter((g) => g.tipo !== 'oraculo'),
@@ -260,12 +321,80 @@ export function ultimoGuardado<T extends Guardado['tipo']>(
   return guardadosDe(s, tipo)[0] ?? null;
 }
 
-/** ¿Ya se guardó la entrega en curso? Compara contra el sello de tiempo del ritual. */
+/** ¿Ya se guardó la entrega en curso? Compara contra el sello de tiempo de la lectura. */
 export function guardadoDesde(s: State, tipo: Guardado['tipo'], desde: number): boolean {
   return s.guardados.some((g) => g.tipo === tipo && g.fecha >= desde);
 }
 
-/** Borra el progreso de los rituales; conserva lo que el usuario guardó. */
+/**
+ * Deja la app como recién estrenada: todos los temporizadores a 0, todas las
+ * secciones disponibles y **nada guardado**.
+ *
+ * Antes conservaba el historial; ahora no, para que el demo arranque siempre
+ * desde cero y cada sección vuelva a pedir que entres a hacer tu lectura.
+ */
+/**
+ * Cómo está la Cruz ahora mismo.
+ *
+ * Toda la regla vive aquí y no repartida entre pantallas: la Cruz es lo único
+ * que se cobra, así que si `index` y `cruz` calcularan la disponibilidad por su
+ * cuenta, una discrepancia entre ambas sería una lectura regalada o una lectura
+ * cobrada dos veces.
+ */
+export type EstadoCruz = {
+  /** Lecturas hechas en la semana en curso */
+  usadas: number;
+  /** ¿Queda la gratis de esta semana? */
+  gratisDisponible: boolean;
+  /** Extras compradas sin gastar */
+  extras: number;
+  /** ¿Se puede leer ahora, sea gratis o gastando una extra? */
+  puedeLeer: boolean;
+  /** Si lee ahora, ¿consumiría una extra? */
+  consumeExtra: boolean;
+  /** Cuántas más caben esta semana antes del tope */
+  cupoRestante: number;
+};
+
+export function estadoCruz(s: State, ahora = Date.now()): EstadoCruz {
+  const usadas = s.cruzSemana?.wk === semanaKey() ? s.cruzSemana.usadas : 0;
+  const cupoRestante = Math.max(0, CRUZ_MAX_SEMANA - usadas);
+  // La gratis pide dos cosas: no haberla gastado esta semana y que el
+  // temporizador haya vencido. El temporizador sobrevive a la reinstalación
+  // porque se sincroniza; el contador semanal, por sí solo, no bastaría.
+  const gratisDisponible =
+    usadas < CRUZ_GRATIS_SEMANA && s.cruzNext <= ahora && cupoRestante > 0;
+  const extras = Math.max(0, s.cruzExtras);
+  const puedeConExtra = !gratisDisponible && extras > 0 && cupoRestante > 0;
+
+  return {
+    usadas,
+    gratisDisponible,
+    extras,
+    puedeLeer: gratisDisponible || puedeConExtra,
+    consumeExtra: puedeConExtra,
+    cupoRestante,
+  };
+}
+
+/**
+ * Aplica el consumo de una lectura de la Cruz.
+ *
+ * Devuelve el parche para `setState`. Descuenta la extra solo si la gratis no
+ * estaba disponible, y mueve el temporizador únicamente cuando se gastó la
+ * gratis: gastar una adicional no debe adelantar la siguiente semana.
+ */
+export function consumirCruz(s: State, ahora = Date.now()): Partial<State> {
+  const e = estadoCruz(s, ahora);
+  const wk = semanaKey();
+  const patch: Partial<State> = {
+    cruzSemana: { wk, usadas: e.usadas + 1 },
+  };
+  if (e.consumeExtra) patch.cruzExtras = Math.max(0, s.cruzExtras - 1);
+  else patch.cruzNext = ahora + SEMANA_MS;
+  return patch;
+}
+
 export function restablecerLecturas(): void {
   setState({
     vibra: null,
@@ -276,11 +405,13 @@ export function restablecerLecturas(): void {
     codigoActivo: null,
     cruzLast: null,
     cruzNext: 0,
-    cruzMes: null,
+    cruzSemana: null,
+    // Las extras compradas NO se tocan: son dinero pagado, no estado de demo.
+    guardados: [],
   });
 }
 
-/** 'YYYY-M' del mes en curso; llave del control mensual de la Cruz. */
+/** 'YYYY-M' del mes en curso. Ya no lo usa la Cruz; se conserva por si algo lo pide. */
 export function mesKey(d: Date = new Date()): string {
   return `${d.getFullYear()}-${d.getMonth() + 1}`;
 }

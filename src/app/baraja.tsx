@@ -7,24 +7,27 @@
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Emblem } from '@/components/Emblem';
 import { Naipe, numName, rankName } from '@/components/Naipe';
 import { Header, Screen } from '@/components/Screen';
 import { BotonSecundario, PildoraInfo } from '@/components/ui';
-import { CARTAS, PALOS } from '@/data/baraja';
+
 import { anchoCelda, useAnchoContenido } from '@/lib/layout';
 import {
   color,
   creamDim,
   font,
+  fs,
   goldDim,
   lavenderDim,
   radius,
   type Suit,
 } from '@/theme/tokens';
+import { abrioSeccion, vioContenido } from '@/lib/analitica';
+import { useContenido } from '@/lib/contenido';
 
 /** La baraja española de 40 cartas: 1–7 más las tres figuras. */
 const NUMEROS = [1, 2, 3, 4, 5, 6, 7, 10, 11, 12];
@@ -32,7 +35,9 @@ const NUMEROS = [1, 2, 3, 4, 5, 6, 7, 10, 11, 12];
 type Seleccion = { palo: Suit; num: number };
 
 export default function LaBaraja() {
+  useEffect(() => abrioSeccion('baraja'), []);
   const router = useRouter();
+  const { PALOS } = useContenido();
   // Parrilla de 3 columnas con 12 px de separación dentro del ancho disponible.
   const ancho = useAnchoContenido();
   const naipe = anchoCelda(ancho, 3, 12);
@@ -100,6 +105,8 @@ export default function LaBaraja() {
                 onPress={() => {
                   setSel({ palo, num: n });
                   setTab('general');
+                  // Qué cartas se consultan más: dice qué significados pesan.
+                  vioContenido('baraja', { carta: `${palo}-${n}` });
                 }}
                 accessibilityRole="button"
                 accessibilityLabel={`${numName(n)} de ${paloDef.nombre}`}
@@ -135,6 +142,7 @@ function DetalleCarta({
   onTab: (t: string) => void;
   onVolver: () => void;
 }) {
+  const { PALOS, CARTAS } = useContenido();
   const paloDef = PALOS.find((p) => p.key === sel.palo) ?? PALOS[0];
   const info = CARTAS[`${sel.palo}-${sel.num}`];
 
@@ -219,8 +227,6 @@ function DetalleCarta({
         <Text style={styles.texto}>{texto}</Text>
       </View>
 
-      <Text style={styles.nota}>La carta habla; tu intuición completa el mensaje.</Text>
-
       <View style={{ flex: 1, minHeight: 20 }} />
       <BotonSecundario style={{ marginTop: 24 }} onPress={onVolver}>
         Volver a la baraja
@@ -233,8 +239,8 @@ const styles = StyleSheet.create({
   intro: {
     textAlign: 'center',
     fontFamily: font.sans,
-    fontSize: 13.5,
-    lineHeight: 22,
+    fontSize: fs(13.5),
+    lineHeight: fs(22),
     color: lavenderDim(0.75),
     maxWidth: 320,
     alignSelf: 'center',
@@ -257,7 +263,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(236,200,116,.85)',
     backgroundColor: 'rgba(236,200,116,.08)',
   },
-  tabPaloLabel: { fontFamily: font.sansSemi, fontSize: 11 },
+  tabPaloLabel: { fontFamily: font.sansSemi, fontSize: fs(11) },
 
   paloCabecera: {
     flexDirection: 'row',
@@ -267,10 +273,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
     marginBottom: 4,
   },
-  paloNombre: { fontFamily: font.serif, fontSize: 24, color: color.gold },
+  paloNombre: { fontFamily: font.serif, fontSize: fs(24), color: color.gold },
   paloElemento: {
     fontFamily: font.sansSemi,
-    fontSize: 11,
+    fontSize: fs(11),
     letterSpacing: 1.8,
     textTransform: 'uppercase',
     color: lavenderDim(0.55),
@@ -289,7 +295,7 @@ const styles = StyleSheet.create({
   celda: { alignItems: 'center' },
   celdaCaption: {
     fontFamily: font.sansMedium,
-    fontSize: 11,
+    fontSize: fs(11),
     color: goldDim(0.7),
     textAlign: 'center',
     marginTop: 6,
@@ -303,21 +309,21 @@ const styles = StyleSheet.create({
   },
   detallePalo: {
     fontFamily: font.sansSemi,
-    fontSize: 11,
+    fontSize: fs(11),
     letterSpacing: 2,
     textTransform: 'uppercase',
     color: lavenderDim(0.55),
   },
   detalleTitulo: {
     fontFamily: font.serif,
-    fontSize: 32,
-    lineHeight: 36,
+    fontSize: fs(32),
+    lineHeight: fs(36),
     color: color.cream,
     marginTop: 4,
   },
   detalleRank: {
     fontFamily: font.sans,
-    fontSize: 12,
+    fontSize: fs(12),
     color: goldDim(0.8),
     marginTop: 4,
   },
@@ -343,7 +349,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(21,13,52,.5)',
     borderColor: lavenderDim(0.25),
   },
-  tabLabel: { fontFamily: font.sansSemi, fontSize: 12.5 },
+  tabLabel: { fontFamily: font.sansSemi, fontSize: fs(12.5) },
 
   cajaTexto: {
     marginTop: 16,
@@ -355,15 +361,8 @@ const styles = StyleSheet.create({
   },
   texto: {
     fontFamily: font.sans,
-    fontSize: 14.5,
-    lineHeight: 25,
+    fontSize: fs(14.5),
+    lineHeight: fs(25),
     color: creamDim(0.92),
-  },
-  nota: {
-    fontFamily: font.serifItalic,
-    fontSize: 15,
-    color: lavenderDim(0.65),
-    marginTop: 16,
-    textAlign: 'center',
   },
 });

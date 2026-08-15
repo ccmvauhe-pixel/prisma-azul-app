@@ -9,7 +9,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AvisoNotificacion } from '@/components/AvisoNotificacion';
 import { Barajado } from '@/components/Barajado';
 import { Emblem } from '@/components/Emblem';
 import { PulsoBrillo, PulsoOpacidad } from '@/components/PulsoBrillo';
@@ -17,12 +16,13 @@ import { Header, Screen } from '@/components/Screen';
 import { Volteo } from '@/components/Volteo';
 import {
   BotonGuardar,
-  BotonPrimario,
+  BotonSecundario,
   EnlaceTenue,
   Pildora,
+  Temporizador,
   Toast,
 } from '@/components/ui';
-import { CODIGO_CATEGORIAS, type CodigoCategoria } from '@/data/codigos';
+import { type CodigoCategoria } from '@/data/codigos';
 import { useAnchoContenido } from '@/lib/layout';
 import {
   borrarGuardadosDe,
@@ -38,10 +38,14 @@ import {
   color,
   creamDim,
   font,
+  fs,
   goldDim,
   lavenderDim,
   radius,
 } from '@/theme/tokens';
+import { abrioSeccion, completoLectura, guardo, vioContenido } from '@/lib/analitica';
+import { useContenido } from '@/lib/contenido';
+import { avisarAhora } from '@/lib/notifications';
 
 type Paso = 'elegir' | 'barajar' | 'revelar' | 'activo';
 
@@ -51,8 +55,10 @@ function sortearCodigo(c: CodigoCategoria): number {
 }
 
 export default function CodigosSagrados() {
+  useEffect(() => abrioSeccion('codigos'), []);
   const router = useRouter();
   const s = useStore();
+  const { CODIGO_CATEGORIAS } = useContenido();
   const [paso, setPaso] = useState<Paso>(() =>
     s.codigoActivo && s.codigoActivo.unlockAt > Date.now() ? 'activo' : 'elegir',
   );
@@ -106,23 +112,58 @@ export default function CodigosSagrados() {
         }
       : null;
 
+  /*
+   * Los tiempos, que antes sumaban 5,1 s desde el toque hasta el código.
+   *
+   * Lo que se acorta es cuánto se ESPERA, no cómo se mueve la baraja: el
+   * `<Barajado>` se queda en su ritmo normal (ciclo de 1100 ms, escalonado de
+   * 135), que es el que da el aire de ritual. Se probó el modo `ágil` y se
+   * descartó: corría de más y perdía la gracia.
+   *
+   * El suelo de 1600 no es arbitrario. Son 8 naipes escalonados a 135 ms, así
+   * que el último no arranca hasta los 945; por debajo de eso habría naipes que
+   * ni se moverían y se vería roto en vez de rápido. La animación se repite en
+   * bucle, así que cortarla a media vuelta es lo normal — también lo hacía con
+   * los 2400 de antes.
+   *
+   * Total: 3,3 s en vez de 5,1. El volteo, que es el momento bueno, intacto.
+   */
+  const BARAJADO_MS = 1600;
+  const VOLTEO_INICIO_MS = 200;
+  /** El volteo dura 800 ms (`duracion` del `<Volteo>`); esto es justo después. */
+  const VOLTEO_FIN_MS = VOLTEO_INICIO_MS + 850;
+
+  /**
+   * Elegir la categoría es lo único que pide.
+   *
+   * El código se entrega solo: se baraja, se voltea la carta y el temporizador
+   * arranca con la revelación, sin pedir confirmación. Guardar sigue siendo una
+   * decisión aparte — si no se guarda, no queda registro.
+   */
   function elegir(c: CodigoCategoria) {
     const elegido = sortearCodigo(c);
     setCat(c.key);
     setIdx(elegido);
     setVolteada(false);
     setPaso('barajar');
-    after(2400, () => {
+    after(BARAJADO_MS, () => {
       setPaso('revelar');
-      after(350, () => setVolteada(true));
+      after(VOLTEO_INICIO_MS, () => setVolteada(true));
+      // El temporizador arranca cuando la carta termina de girar.
+      after(VOLTEO_FIN_MS, () => activar(c.key, elegido));
+      // Y la pantalla pasa sola al código activo, ya con su cuenta atrás.
+      after(VOLTEO_FIN_MS + 650, () => setPaso('activo'));
     });
   }
 
-  function activar() {
-    if (!cat || idx == null) return;
-    setState({ codigoActivo: { cat, idx, unlockAt: Date.now() + SEMANA_MS } });
+  function activar(clave: string, indice: number) {
+    setState({
+      codigoActivo: { cat: clave, idx: indice, unlockAt: Date.now() + SEMANA_MS },
+    });
     setRecienActivado(true);
-    setPaso('activo');
+    completoLectura('codigos', { categoria: clave });
+    const elegido = CODIGO_CATEGORIAS.find((c) => c.key === clave)?.codigos[indice];
+    if (elegido) vioContenido('codigos', { categoria: clave, codigo: elegido.c });
   }
 
   function volver() {
@@ -161,16 +202,15 @@ export default function CodigosSagrados() {
         <>
           <Text style={styles.intro}>
             ¿Qué buscas esta semana? El universo elegirá un solo código para ti:
-            repítelo 45 veces al día durante toda la semana.
+            repítelo con fe durante toda la semana.
           </Text>
           <View style={styles.lista}>
             {CODIGO_CATEGORIAS.map((c) => (
               <FilaCategoria key={c.key} categoria={c} onPress={() => elegir(c)} />
             ))}
           </View>
-          <Text style={styles.pie}>
-            Un solo código a la vez: la constancia es el ritual ✦
-          </Text>
+          {/* "Uno por semana" ya está en la cabecera; aquí queda el porqué. */}
+          <Text style={styles.pie}>La constancia es lo que lo activa ✦</Text>
         </>
       )}
 
@@ -213,14 +253,21 @@ export default function CodigosSagrados() {
 
           <ComoUsarlo />
           <View style={{ flex: 1, minHeight: 22 }} />
-          <BotonPrimario onPress={activar} style={{ marginTop: 22 }}>
-            Recibir mi código
-          </BotonPrimario>
+          <PulsoOpacidad style={{ marginTop: 22 }}>
+            <Text style={styles.entregando}>Tu código queda activo por siete días…</Text>
+          </PulsoOpacidad>
         </View>
       )}
 
       {paso === 'activo' && (
-        <View style={{ alignItems: 'center', flex: 1 }}>
+        /*
+          Centrado en el alto disponible, se haya guardado o no.
+          Antes había un `flex: 1` justo antes de "Restablecer" que se comía
+          todo el hueco sobrante y lo dejaba abajo del todo, con un vacío grande
+          en medio. Sin ese hueco y con el bloque centrado, las dos variantes
+          —con código a la vista y sin él— se ven igual de compactas.
+        */
+        <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}>
           {/*
             Durante la sesión en que se activa, el código sigue a mano para poder
             guardarlo. Al volver más tarde solo sobrevive lo que se guardó.
@@ -248,65 +295,50 @@ export default function CodigosSagrados() {
             </View>
           )}
 
-          <View style={styles.filaCuenta}>
-            <Text style={styles.cuentaEtiqueta}>Nueva semana, nuevo código en</Text>
-            <Text style={styles.cuentaValor}>{fmtSemanal(restante)}</Text>
-          </View>
+          <Temporizador
+            etiqueta="Tu próximo código estará disponible en:"
+            valor={fmtSemanal(restante)}
+          />
 
           {mostrado ? <ComoUsarlo /> : null}
 
-          <View style={{ width: '100%', marginTop: 16 }}>
-            <AvisoNotificacion
-              emblema="oros"
-              cuando="lunes 9:00"
-              mensaje="🌙 Nueva semana, nuevo código. Ven a recibirlo."
-              etiquetaToggle="Avisarme cada semana"
-              activo={s.notif.codigo}
-              onToggle={() =>
-                setState((st) => ({ notif: { ...st.notif, codigo: !st.notif.codigo } }))
-              }
-            />
-          </View>
-
           {mostrado && (puedeGuardar || yaGuardado) ? (
-            <>
-              {puedeGuardar ? (
-                <Text style={styles.avisoGuardar}>
-                  Guárdalo para poder volver a leerlo. Si no lo guardas, se irá con la
-                  semana.
-                </Text>
-              ) : null}
-              <BotonGuardar
-                style={{ marginTop: 14 }}
-                guardado={yaGuardado}
-                etiquetaGuardado="Guardado en Mi Camino ✦"
-                onPress={() => {
-                  guardar({
-                    tipo: 'codigo',
-                    fecha: Date.now(),
-                    numero: mostrado.numero,
-                    proposito: mostrado.proposito,
-                    categoria: mostrado.categoria,
-                  });
-                  mostrarToast('✨ Guardado en Mi Camino');
-                }}
-              >
-                Guardar mi código
-              </BotonGuardar>
-            </>
+            <BotonGuardar
+              style={{ marginTop: 18 }}
+              guardado={yaGuardado}
+              etiquetaGuardado="Guardado en Mi Camino ✦"
+              onPress={() => {
+                guardar({
+                  tipo: 'codigo',
+                  fecha: Date.now(),
+                  numero: mostrado.numero,
+                  proposito: mostrado.proposito,
+                  categoria: mostrado.categoria,
+                });
+                guardo('codigos', { codigo: mostrado.numero });
+                mostrarToast('✨ Guardado en Mi Camino');
+              }}
+            >
+              Guardar mi código
+            </BotonGuardar>
           ) : null}
 
-          <View style={{ flex: 1, minHeight: 24 }} />
+          <BotonSecundario style={{ marginTop: 12 }} onPress={() => router.back()}>
+            Volver al inicio
+          </BotonSecundario>
+
           <EnlaceTenue
             onPress={() => {
               // Deja la sección como recién estrenada: sin código activo y sin
-              // nada guardado.
+              // nada guardado. El aviso es el que llegaría al vencer la semana.
               setState({ codigoActivo: null });
               borrarGuardadosDe('codigo');
               setPaso('elegir');
               setCat(null);
               setIdx(null);
               setRecienActivado(false);
+              void avisarAhora('🌙 Nueva semana, nuevo código. Ven a recibirlo.');
+              mostrarToast('✨ Sección restablecida');
             }}
           >
             Restablecer (demo)
@@ -379,9 +411,8 @@ function ComoUsarlo() {
     <View style={styles.comoUsarlo}>
       <Text style={styles.comoTitulo}>Cómo usarlo</Text>
       <Text style={styles.comoTexto}>
-        Repítelo <Text style={styles.comoFuerte}>45 veces al día</Text>, en voz alta,
-        escrito o en tu mente. Hazlo con fe, gratitud y en tiempo presente, toda la
-        semana.
+        Repítelo en voz alta, escrito o en tu mente. Hazlo con fe, gratitud y en
+        tiempo presente.
       </Text>
     </View>
   );
@@ -391,8 +422,8 @@ const styles = StyleSheet.create({
   intro: {
     textAlign: 'center',
     fontFamily: font.sans,
-    fontSize: 14,
-    lineHeight: 23,
+    fontSize: fs(14),
+    lineHeight: fs(23),
     color: lavenderDim(0.78),
     maxWidth: 330,
     alignSelf: 'center',
@@ -412,22 +443,22 @@ const styles = StyleSheet.create({
   },
   filaCatNombre: {
     fontFamily: font.serif,
-    fontSize: 21,
-    lineHeight: 24,
+    fontSize: fs(21),
+    lineHeight: fs(24),
     color: color.cream,
   },
   filaCatSub: {
     fontFamily: font.sans,
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: fs(12),
+    lineHeight: fs(17),
     color: lavenderDim(0.65),
     marginTop: 3,
   },
-  chevron: { fontFamily: font.serif, fontSize: 24, color: goldDim(0.7) },
+  chevron: { fontFamily: font.serif, fontSize: fs(24), color: goldDim(0.7) },
   pie: {
     textAlign: 'center',
     fontFamily: font.sans,
-    fontSize: 11.5,
+    fontSize: fs(11.5),
     color: lavenderDim(0.45),
     marginTop: 18,
   },
@@ -435,25 +466,31 @@ const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   catNombre: {
     fontFamily: font.serif,
-    fontSize: 26,
+    fontSize: fs(26),
     color: color.cream,
     textAlign: 'center',
   },
   barajando: {
     fontFamily: font.serifItalic,
-    fontSize: 18,
+    fontSize: fs(18),
     color: goldDim(0.9),
   },
   barajandoSub: {
     fontFamily: font.sans,
-    fontSize: 12.5,
+    fontSize: fs(12.5),
     color: lavenderDim(0.6),
     marginTop: 8,
+  },
+  entregando: {
+    fontFamily: font.serifItalic,
+    fontSize: fs(17),
+    color: goldDim(0.9),
+    textAlign: 'center',
   },
 
   kickerCat: {
     fontFamily: font.sansSemi,
-    fontSize: 11,
+    fontSize: fs(11),
     letterSpacing: 2.6,
     textTransform: 'uppercase',
     color: lavenderDim(0.55),
@@ -462,7 +499,7 @@ const styles = StyleSheet.create({
   },
   tituloGrande: {
     fontFamily: font.serif,
-    fontSize: 30,
+    fontSize: fs(30),
     color: color.gold,
     textAlign: 'center',
     marginTop: 4,
@@ -490,17 +527,17 @@ const styles = StyleSheet.create({
   },
   numero: {
     fontFamily: font.serifBold,
-    fontSize: 56,
+    fontSize: fs(56),
     letterSpacing: 3.4,
-    lineHeight: 60,
+    lineHeight: fs(60),
     color: '#f0d488',
     marginTop: 14,
     textAlign: 'center',
   },
   proposito: {
     fontFamily: font.sans,
-    fontSize: 14,
-    lineHeight: 22,
+    fontSize: fs(15.5),
+    lineHeight: fs(24),
     color: creamDim(0.92),
     marginTop: 12,
     textAlign: 'center',
@@ -515,15 +552,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  filaCuenta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 16,
-  },
-  cuentaEtiqueta: { fontFamily: font.sans, fontSize: 12, color: lavenderDim(0.65) },
-  cuentaValor: { fontFamily: font.serifBold, fontSize: 20, color: color.gold },
-
   comoUsarlo: {
     width: '100%',
     marginTop: 18,
@@ -536,26 +564,17 @@ const styles = StyleSheet.create({
   },
   comoTitulo: {
     fontFamily: font.sansSemi,
-    fontSize: 11,
+    fontSize: fs(12),
     letterSpacing: 2,
     textTransform: 'uppercase',
     color: goldDim(0.75),
   },
   comoTexto: {
     fontFamily: font.sans,
-    fontSize: 13,
-    lineHeight: 21,
+    fontSize: fs(14.5),
+    lineHeight: fs(23),
     color: creamDim(0.88),
     marginTop: 6,
-  },
-  comoFuerte: { fontFamily: font.sansBold, color: color.gold },
-  avisoGuardar: {
-    fontFamily: font.sans,
-    fontSize: 12.5,
-    lineHeight: 19,
-    color: goldDim(0.75),
-    marginTop: 16,
-    textAlign: 'center',
   },
   sinGuardar: {
     width: '100%',
@@ -569,8 +588,8 @@ const styles = StyleSheet.create({
   },
   sinGuardarTexto: {
     fontFamily: font.sans,
-    fontSize: 13.5,
-    lineHeight: 22,
+    fontSize: fs(15),
+    lineHeight: fs(24),
     color: lavenderDim(0.75),
     textAlign: 'center',
   },

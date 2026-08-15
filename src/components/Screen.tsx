@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { color, font, layout, lavenderDim } from '@/theme/tokens';
+import { color, font, fs, lavenderDim, layout, text } from '@/theme/tokens';
 
 /**
  * Posiciones de las estrellitas, tomadas de los `radial-gradient` del prototipo
@@ -125,7 +125,11 @@ export function Header({
       </Pressable>
       <View style={{ flex: 1 }}>
         <Text style={styles.kicker}>{kicker}</Text>
-        <Text style={styles.headerTitle}>{titulo}</Text>
+        {/* Un título que se parte en dos líneas descuadra la píldora de la
+            derecha; encoge antes de romperse. */}
+        <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>
+          {titulo}
+        </Text>
       </View>
       {right}
     </View>
@@ -151,21 +155,21 @@ const styles = StyleSheet.create({
   },
   backChevron: {
     fontFamily: font.serif,
-    fontSize: 30,
-    lineHeight: 34,
+    fontSize: fs(30),
+    lineHeight: fs(34),
     color: 'rgba(231,207,155,.85)',
   },
   kicker: {
     fontFamily: font.sansSemi,
-    fontSize: 11,
-    letterSpacing: 3,
+    ...text.micro,
+    letterSpacing: 2.6,
     textTransform: 'uppercase',
-    color: lavenderDim(0.6),
+    color: lavenderDim(0.72),
   },
   headerTitle: {
     fontFamily: font.serif,
-    fontSize: 26,
-    lineHeight: 30,
+    ...text.display,
     color: color.gold,
+    marginTop: 1,
   },
 });

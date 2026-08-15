@@ -30,8 +30,33 @@ yarn-error.*
 .DS_Store
 *.pem
 
+# ...menos el certificado de firma de las actualizaciones OTA.
+#
+# `*.pem` de arriba lo estaba ignorando, y eso rompe la firma en silencio: sin
+# el certificado en el repositorio, la build de EAS no lo embebe y las
+# actualizaciones salen sin firmar. El certificado es PÚBLICO — es justo lo que
+# viaja dentro de la app para comprobar la firma. La clave privada es la que no
+# sale de aquí, y va aparte en `keys/`.
+!certs/certificate.pem
+
 # local env files
+# Ojo: `.env` también, no solo `.env*.local`. Ahí viven la URL y las claves de
+# Supabase. La versión sin secretos que sí se versiona es `.env.example`.
+.env
 .env*.local
+!.env.example
+
+# Clave privada de firma de las actualizaciones OTA.
+#
+# `expo-updates` descarga y ejecuta JavaScript nuevo en teléfonos ya instalados,
+# sin pasar por la tienda. La firma es lo que impide que sirva cualquier cosa:
+# el teléfono comprueba el certificado antes de ejecutar. Si esta clave se
+# filtra, la firma deja de valer para nada.
+#
+# El certificado (`certs/`) SÍ se versiona: es público, viaja dentro de la app y
+# es lo que el teléfono usa para comprobar. La clave se queda aquí y en un
+# gestor de contraseñas — perderla obliga a refirmar todas las futuras.
+keys/
 
 # typescript
 *.tsbuildinfo

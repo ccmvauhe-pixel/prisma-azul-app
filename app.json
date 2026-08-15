@@ -24,7 +24,7 @@
       "edgeToEdgeEnabled": true
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -43,11 +43,30 @@
           "color": "#ecc874",
           "defaultChannel": "rituales"
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b8a52e95-4d45-4f18-ade3-0b923b419c5a"
+      }
+    },
+    "owner": "dany_gutz",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/b8a52e95-4d45-4f18-ade3-0b923b419c5a",
+      "codeSigningCertificate": "./certs/certificate.pem",
+      "codeSigningMetadata": {
+        "keyid": "main",
+        "alg": "rsa-v1_5-sha256"
+      }
     }
   }
 }

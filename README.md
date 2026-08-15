@@ -55,8 +55,33 @@ src/
   components/          Piezas compartidas (naipe, barajado, volteo, tarjetas…)
   data/                Contenido de los PDFs de Gilda, portado a TypeScript
   lib/                 Estado persistente, temporizadores y notificaciones
+    supabase.ts        Cliente; `null` si no hay credenciales
+    auth.ts            Acceso por enlace mágico
+    sync.ts            Sincronización de lo guardado y los temporizadores
+    contenido.ts       Contenido: empaquetado → caché → remoto
   theme/tokens.ts      Colores, tipografías y medidas del diseño
+supabase/              Esquema SQL, contenido y guía de puesta en marcha
 ```
+
+## Supabase (opcional)
+
+La app funciona entera sin backend. Con él, lo guardado sobrevive a reinstalar y
+Gilda puede corregir textos sin publicar una versión nueva.
+
+Puesta en marcha: **[supabase/README.md](supabase/README.md)**.
+
+Sin `.env`, `haySupabase` es `false`, el cliente es `null` y no se hace ni una
+petición: la app arranca directa en Mi Camino, como siempre.
+
+El contenido tiene tres capas y **nunca baja del suelo**: lo empaquetado en
+`src/data/` siempre está disponible, la caché lo mejora sin esperar a la red, y
+lo remoto solo se adopta si llega completo y bien formado. Una sección remota
+vacía o con la forma cambiada se descarta entera.
+
+En la sincronización de temporizadores gana **lo más restrictivo**, no lo más
+reciente. Es deliberado: si ganara lo reciente, reinstalar la app pisaría los
+bloqueos del servidor con un estado en blanco y regalaría una lectura de Cruz
+cada vez.
 
 ## Rituales y sus tiempos
 

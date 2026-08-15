@@ -3,7 +3,7 @@
  * Medidas y colores tomados del handoff (sección "Interactions & Behavior").
  */
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -16,6 +16,7 @@ import {
 import Animated, {
   Easing,
   interpolate,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -28,9 +29,11 @@ import {
   color,
   creamDim,
   font,
+  fs,
   goldDim,
   lavenderDim,
   radius,
+  text,
 } from '@/theme/tokens';
 
 /**
@@ -43,7 +46,11 @@ export function useMedidaBoton(base: number): { alto: number; fuente: number } {
   const factor = menor >= 768 ? 1.25 : menor <= 360 ? 1 : 1.12;
   return {
     alto: Math.round(base * factor),
-    fuente: Math.round(17 * factor * 10) / 10,
+    // `fs(17)` y no 17 a secas: los botones tienen su propio factor por tamaño
+    // de pantalla, pero la escala tipográfica de la app es la misma para todo.
+    // Sin esto, al agrandar el texto los botones se quedaban pequeños y eran lo
+    // único que no acompañaba.
+    fuente: Math.round(fs(17) * factor * 10) / 10,
   };
 }
 
@@ -192,20 +199,47 @@ export function BotonGuardar({
   const { alto, fuente } = useMedidaBoton(72);
   const celebra = useSharedValue(0);
   const apagado = useSharedValue(guardado ? 1 : 0);
+  const retirada = useSharedValue(0);
   const yaVenia = useRef(guardado);
+
+  /*
+   * Una vez guardado no queda nada que pulsar, así que el botón se retira.
+   *
+   * Arranca oculto si la entrega ya venía guardada (volver a una pantalla que
+   * se guardó en otra sesión): ahí no hay nada que celebrar y animar una
+   * salida sería enseñar un botón para quitarlo medio segundo después.
+   */
+  const [oculto, setOculto] = useState(guardado);
 
   useEffect(() => {
     if (guardado && !yaVenia.current) {
-      // Recién guardado: celebra y luego se apaga.
+      // Recién guardado: celebra, se apaga y por último se va.
       celebra.value = 0;
       celebra.value = withTiming(1, { duration: 900, easing: Easing.out(Easing.quad) });
       apagado.value = withDelay(500, withTiming(1, { duration: 500 }));
+      retirada.value = withDelay(
+        1050,
+        withTiming(1, { duration: 420, easing: Easing.in(Easing.quad) }, (fin) => {
+          // Se desmonta al terminar para que no siga ocupando alto en la
+          // columna: si no, queda un hueco donde estaba el botón.
+          if (fin) runOnJS(setOculto)(true);
+        }),
+      );
     } else if (!guardado) {
+      // Hay entrega nueva sin guardar: el botón vuelve.
       celebra.value = 0;
       apagado.value = withTiming(0, { duration: 300 });
+      retirada.value = 0;
+      setOculto(false);
     }
     yaVenia.current = guardado;
-  }, [guardado, celebra, apagado]);
+  }, [guardado, celebra, apagado, retirada]);
+
+  /** Salida: se desvanece y cae un poco, como el resto de transiciones. */
+  const estiloRetirada = useAnimatedStyle(() => ({
+    opacity: 1 - retirada.value,
+    transform: [{ translateY: retirada.value * 8 }],
+  }));
 
   /** El botón pierde color y se hunde ligeramente al quedar guardado. */
   const estiloApagado = useAnimatedStyle(() => ({
@@ -244,16 +278,19 @@ export function BotonGuardar({
     </>
   );
 
+  // Ya se fue: ni ocupa sitio ni queda en el árbol de accesibilidad.
+  if (oculto) return null;
+
   if (guardado) {
     return (
-      <View
+      <Animated.View
         accessibilityRole="button"
         accessibilityState={{ disabled: true }}
         accessibilityLabel={etiquetaGuardado}
-        style={[styles.guardarWrap, style]}
+        style={[styles.guardarWrap, style, estiloRetirada]}
       >
         {contenido}
-      </View>
+      </Animated.View>
     );
   }
 
@@ -270,6 +307,31 @@ export function BotonGuardar({
     >
       {contenido}
     </Pressable>
+  );
+}
+
+/**
+ * Temporizador de las pantallas en espera.
+ *
+ * Vive aquí y no en cada pantalla para que las cuatro secciones lo enseñen
+ * exactamente igual: antes Códigos lo pintaba en una fila pequeña (20 px) y
+ * Afirmaciones y Oráculo en grande (44 px), así que la misma información se
+ * veía de dos tamaños según dónde estuvieras.
+ */
+export function Temporizador({
+  etiqueta,
+  valor,
+  style,
+}: {
+  etiqueta: string;
+  valor: string;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[styles.tempCaja, style]}>
+      <Text style={styles.tempEtiqueta}>{etiqueta}</Text>
+      <Text style={styles.tempValor}>{valor}</Text>
+    </View>
   );
 }
 
@@ -330,10 +392,20 @@ export function Pildora({
   bloqueado: boolean;
   compacta?: boolean;
 }) {
+  /*
+   * La compacta sí baja la letra, y antes no lo hacía.
+   *
+   * El motivo del cambio: en las celdas de la rejilla del inicio solo hay ~140
+   * px libres (168 de celda menos los 14 de acolchado a cada lado). Con 11 px y
+   * 10 de acolchado, "Nuevo en 23 h 45 m" deja el grupo emblema + píldora en
+   * ~152 px, así que se salía y el `overflow: hidden` de la tarjeta lo cortaba
+   * contra el borde. A 10 px y 8 de acolchado el grupo baja a ~136 y entra con
+   * aire. Sigue leyéndose de un vistazo, que es lo único que hay que hacer.
+   */
   const padding = compacta
-    ? { paddingVertical: 4, paddingHorizontal: 9 }
-    : { paddingVertical: 7, paddingHorizontal: 12 };
-  const fontSize = compacta ? 10 : 11;
+    ? { paddingVertical: 4, paddingHorizontal: 8 }
+    : { paddingVertical: 7, paddingHorizontal: 13 };
+  const fontSize = compacta ? 10 : text.micro.fontSize;
 
   if (bloqueado) {
     return (
@@ -375,7 +447,10 @@ export function Pildora({
 export function PildoraInfo({ label }: { label: string }) {
   return (
     <View style={[styles.pill, { paddingVertical: 7, paddingHorizontal: 12, borderWidth: 1, borderColor: goldDim(0.35) }]}>
-      <Text style={[styles.pillLabel, { fontSize: 11, color: goldDim(0.85) }]} numberOfLines={1}>
+      <Text
+        style={[styles.pillLabel, { fontSize: text.micro.fontSize, color: goldDim(0.85) }]}
+        numberOfLines={1}
+      >
         {label}
       </Text>
     </View>
@@ -435,10 +510,13 @@ export function Kicker({
       style={[
         {
           fontFamily: font.sansSemi,
-          fontSize: 10,
+          // `menor` y no `micro`: es el rótulo que dice de qué sección es cada
+          // tarjeta, y en mayúsculas con tracking a 12,5 px se leía como una
+          // nota al pie. Sube en todas las tarjetas a la vez.
+          ...text.menor,
           letterSpacing: 1.6,
           textTransform: 'uppercase',
-          color: c ?? lavenderDim(0.6),
+          color: c ?? lavenderDim(0.72),
         },
         style as never,
       ]}
@@ -520,6 +598,23 @@ export const styles = StyleSheet.create({
     width: '100%',
     borderRadius: radius.pill,
   },
+
+  // Temporizador compartido: el mismo tamaño en las cuatro secciones.
+  tempCaja: { alignItems: 'center', marginTop: 22 },
+  tempEtiqueta: {
+    fontFamily: font.sans,
+    fontSize: fs(13),
+    lineHeight: fs(20),
+    color: lavenderDim(0.7),
+    textAlign: 'center',
+  },
+  tempValor: {
+    fontFamily: font.serifBold,
+    fontSize: fs(44),
+    color: color.gold,
+    marginTop: 8,
+    letterSpacing: 0.9,
+  },
   destelloRecorte: {
     position: 'absolute',
     top: 0,
@@ -562,6 +657,15 @@ export const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     alignItems: 'center',
     justifyContent: 'center',
+    /*
+     * Que ceda antes que desbordar. Sin esto, una etiqueta más larga de lo
+     * previsto empuja el ancho de la fila más allá de la tarjeta y el
+     * `overflow: hidden` la corta a ras del borde — que es lo que pasaba en el
+     * Oráculo. Con esto, en el peor caso el texto se recorta con puntos
+     * suspensivos (`numberOfLines={1}`) y la píldora nunca toca el marco.
+     */
+    flexShrink: 1,
+    minWidth: 0,
   },
   pillLabel: { fontFamily: font.sansSemi },
   tarjeta: {
@@ -569,7 +673,10 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: cardBorder,
     backgroundColor: color.card,
-    padding: 14,
+    // 16 y no 14: con la escala tipográfica en 1.15 el texto pide algo más de
+    // aire para no ir pegado al borde. Sube en todas las tarjetas a la vez, que
+    // es lo que las mantiene iguales entre sí.
+    padding: 16,
     overflow: 'hidden',
   },
   acento: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3 },
@@ -594,12 +701,12 @@ export const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 10,
   },
-  toastText: { fontFamily: font.sans, fontSize: 13, color: color.cream },
-  enlace: { padding: 10, alignSelf: 'center' },
+  toastText: { fontFamily: font.sans, ...text.cuerpo, color: color.cream },
+  enlace: { padding: 12, alignSelf: 'center' },
   enlaceTexto: {
     fontFamily: font.sans,
-    fontSize: 12,
-    color: lavenderDim(0.5),
+    ...text.menor,
+    color: lavenderDim(0.6),
     textDecorationLine: 'underline',
   },
   nota: {
@@ -611,8 +718,7 @@ export const styles = StyleSheet.create({
   },
   notaTexto: {
     fontFamily: font.sans,
-    fontSize: 13,
-    lineHeight: 21,
+    ...text.cuerpo,
     color: creamDim(0.88),
   },
 });

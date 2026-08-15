@@ -6,7 +6,14 @@
  * la preferencia real que `lib/notifications` usa para programar los avisos.
  */
 import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 import { Emblem } from '@/components/Emblem';
 import type { EmblemName } from '@/data/emblems';
@@ -14,6 +21,7 @@ import {
   color,
   creamDim,
   font,
+  fs,
   goldDim,
   lavenderDim,
   radius,
@@ -26,6 +34,7 @@ export function AvisoNotificacion({
   etiquetaToggle,
   activo,
   onToggle,
+  style,
 }: {
   emblema?: EmblemName;
   /** Momento mostrado en la maqueta, p. ej. "lunes 9:00" */
@@ -34,9 +43,22 @@ export function AvisoNotificacion({
   etiquetaToggle: string;
   activo: boolean;
   onToggle: () => void;
+  style?: StyleProp<ViewStyle>;
 }) {
+  /*
+   * Con el aviso ya activado esta tarjeta no ofrece nada: repite en cada
+   * sección algo que ya está dicho y que se gobierna desde el perfil. Solo
+   * aparece cuando hay algo que proponer — activarlo.
+   *
+   * El `null` va aquí y no en cada pantalla a propósito: así la regla no
+   * depende de que las cuatro secciones se acuerden de comprobarlo, y el
+   * margen viene por `style`, que desaparece con el componente en vez de
+   * dejar un hueco vacío en la columna.
+   */
+  if (activo) return null;
+
   return (
-    <View style={styles.caja}>
+    <View style={[styles.caja, style]}>
       <View style={styles.fila}>
         <View style={styles.icono}>
           <Emblem name={emblema} size={20} />
@@ -114,11 +136,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   filaTitulo: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  app: { fontFamily: font.sansBold, fontSize: 12.5, color: color.cream },
-  cuando: { fontFamily: font.sans, fontSize: 11, color: lavenderDim(0.5) },
+  app: { fontFamily: font.sansBold, fontSize: fs(12.5), color: color.cream },
+  cuando: { fontFamily: font.sans, fontSize: fs(11), color: lavenderDim(0.5) },
   mensaje: {
     fontFamily: font.sans,
-    fontSize: 12.5,
+    fontSize: fs(12.5),
     color: creamDim(0.85),
     marginTop: 1,
   },
@@ -132,7 +154,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: lavenderDim(0.15),
   },
-  etiqueta: { fontFamily: font.sans, fontSize: 13.5, color: creamDim(0.9) },
+  etiqueta: { fontFamily: font.sans, fontSize: fs(13.5), color: creamDim(0.9) },
   pista: {
     width: 46,
     height: 28,

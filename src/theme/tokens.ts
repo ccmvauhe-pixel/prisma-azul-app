@@ -35,12 +35,17 @@ export const suitColor = {
   bastos: '#86cf9e',
 } as const;
 
-/** Color del índice numérico impreso en cada naipe */
+/**
+ * Color del índice numérico impreso en cada naipe.
+ *
+ * Los cuatro palos comparten el dorado de oros: el número deja de competir con
+ * el emblema, que es quien lleva el color del palo.
+ */
 export const suitIdxColor = {
-  copas: '#f0b9cd',
+  copas: '#f0d488',
   oros: '#f0d488',
-  espadas: '#aecaf5',
-  bastos: '#a8e3bc',
+  espadas: '#f0d488',
+  bastos: '#f0d488',
 } as const;
 
 export type Suit = keyof typeof suitColor;
@@ -59,6 +64,65 @@ export const font = {
   sansMedium: 'HankenGrotesk_500Medium',
   sansSemi: 'HankenGrotesk_600SemiBold',
   sansBold: 'HankenGrotesk_700Bold',
+} as const;
+
+/**
+ * Escala tipográfica global. **Este es el mando: un solo número.**
+ *
+ * Todo el texto de la app pasa por `fs()`, así que subir o bajar este valor
+ * reescala la app entera manteniendo intactas las proporciones entre unos
+ * tamaños y otros. No hay que tocar ni un `fontSize` suelto.
+ *
+ *   1     = el diseño original del handoff
+ *   1.15  = actual — el cuerpo pasa de 14 a 16 px
+ *
+ * Si se cambia, hay que revisar dos sitios que dependen del alto del texto y no
+ * se ajustan solos, porque son cajas con medida fija:
+ *
+ *   · `gridCell.minHeight` en `index.tsx` (la rejilla 2×2 del inicio)
+ *   · `cajaTexto`/`minHeight` de las tarjetas que envuelven texto largo
+ *
+ * Están anotados en su sitio. `Naipe.tsx` queda fuera a propósito: su letra se
+ * deriva de la geometría de la carta (`u()`, `p()`) y ya escala con ella.
+ */
+export const ESCALA_TEXTO = 1.15;
+
+/**
+ * Aplica la escala a un tamaño del diseño original.
+ *
+ * Redondea a medio píxel: en Android los tamaños con muchos decimales caen en
+ * píxeles distintos según la densidad y dos textos que deberían ir iguales
+ * acaban desalineados por una fracción.
+ */
+export const fs = (n: number): number => Math.round(n * ESCALA_TEXTO * 2) / 2;
+
+/**
+ * Escala tipográfica.
+ *
+ * El handoff mezclaba dieciocho tamaños distintos y varios por debajo de 10 px:
+ * legibles en una maqueta vista al 100 % en un monitor, no en un teléfono en la
+ * mano. Aquí se reducen a seis escalones y el suelo sube a 11 px, que es el
+ * mínimo cómodo para texto en mayúsculas.
+ *
+ * Menos escalones también es menos ruido: cuando cada dato tiene su propio
+ * tamaño, ninguno destaca. Con seis, la jerarquía se lee sola.
+ *
+ * Los números de abajo son los del diseño; lo que se usa de verdad es su
+ * versión escalada por `fs()`.
+ */
+export const text = {
+  /** Kickers y etiquetas en mayúsculas */
+  micro: { fontSize: fs(11), lineHeight: fs(15) },
+  /** Pies, subtítulos, datos secundarios */
+  menor: { fontSize: fs(12.5), lineHeight: fs(18) },
+  /** Cuerpo */
+  cuerpo: { fontSize: fs(14), lineHeight: fs(21) },
+  /** Cuerpo destacado y frases */
+  guia: { fontSize: fs(16.5), lineHeight: fs(24) },
+  /** Títulos de tarjeta */
+  titulo: { fontSize: fs(21), lineHeight: fs(26) },
+  /** Título de pantalla */
+  display: { fontSize: fs(29), lineHeight: fs(34) },
 } as const;
 
 export const radius = {

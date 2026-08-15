@@ -1,5 +1,5 @@
 /**
- * Cruz de Vida — una lectura gratis al mes.
+ * Cruz de Vida — una lectura gratis por semana, hasta 3 en total.
  *
  * Flujo: intro → quién consulta → elegir pregunta → concentración → tirada
  * animada → resultado. Las cartas se van repartiendo en cruz por rondas hasta
@@ -18,7 +18,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Barajado } from '@/components/Barajado';
-import { DorsoNaipe, Naipe, nombreCarta, numName, paloName } from '@/components/Naipe';
+import { CARD_RATIO, DorsoNaipe, Naipe, nombreCarta, numName, paloName } from '@/components/Naipe';
 import { Header, Screen } from '@/components/Screen';
 import { Volteo } from '@/components/Volteo';
 import {
@@ -27,37 +27,50 @@ import {
   BotonSecundario,
   EnlaceTenue,
   PildoraInfo,
+  Temporizador,
   Toast,
 } from '@/components/ui';
 import {
-  CRUZ_DATA,
   type CartaRef,
   type PosKey,
   type Pregunta,
 } from '@/data/cruz';
 import { anchoCelda, useAnchoContenido } from '@/lib/layout';
 import {
+  borrarGuardadosDe,
+  consumirCruz,
+  CRUZ_MAX_SEMANA,
+  estadoCruz,
   guardadoDesde,
   guardadosDe,
   guardar,
-  MES_MS,
-  mesKey,
   setState,
   useStore,
 } from '@/lib/store';
-import { fechaCorta, useTick } from '@/lib/time';
+import { fechaCorta, fmtLargo, useTick } from '@/lib/time';
 import {
   cardBorder,
   color,
   creamDim,
   font,
+  fs,
   goldDim,
   lavenderDim,
   radius,
   type Suit,
 } from '@/theme/tokens';
+import { abrioSeccion, completoLectura, guardo, vioContenido } from '@/lib/analitica';
+import { getContenido, useContenido } from '@/lib/contenido';
+import { avisarAhora } from '@/lib/notifications';
 
-type Paso = 'intro' | 'genero' | 'pregunta' | 'concentra' | 'tirada' | 'resultado';
+type Paso =
+  | 'intro'
+  | 'genero'
+  | 'categoria'
+  | 'pregunta'
+  | 'concentra'
+  | 'tirada'
+  | 'resultado';
 type Genero = 'mujer' | 'hombre';
 /** Fases de una carta al caer: entra, boca abajo, se voltea, es la representante */
 type Fase = 'enter' | 'down' | 'up' | 'rep';
@@ -71,11 +84,15 @@ const PALOS: Suit[] = ['oros', 'copas', 'espadas', 'bastos'];
 const NUMEROS = [1, 2, 3, 4, 5, 6, 7, 10, 11, 12];
 
 export default function CruzDeVida() {
+  useEffect(() => abrioSeccion('cruz'), []);
   const router = useRouter();
   const s = useStore();
+  const { CRUZ_DATA } = useContenido();
 
   const [paso, setPaso] = useState<Paso>('intro');
   const [genero, setGenero] = useState<Genero | null>(null);
+  /** Área elegida (Amor, Dinero y trabajo, Salud y energía): filtra las preguntas. */
+  const [catKey, setCatKey] = useState<string | null>(null);
   const [preguntaId, setPreguntaId] = useState<number | null>(null);
   const [barajando, setBarajando] = useState(false);
   const [slots, setSlots] = useState<Slots>(SLOTS_VACIOS);
@@ -90,13 +107,21 @@ export default function CruzDeVida() {
   const ancho = useAnchoContenido();
   const celda = anchoCelda(ancho, 3, 10);
 
-  // El tick solo corre en la intro, que es donde se muestra la cuenta atrás.
-  const now = useTick(paso === 'intro', 60_000);
-  const usadas = s.cruzMes?.ym === mesKey() ? s.cruzMes.usadas : 0;
-  const hayLectura = usadas < 1;
+  /*
+   * El tick solo corre en la intro, que es donde se muestra la cuenta atrás.
+   *
+   * Cada segundo, no cada minuto: antes aquí solo se leían días ("vuelve a
+   * abrirse en 3 días") y bastaba con 60 s. Ahora es el temporizador común, y
+   * `fmtLargo` baja a segundos en el último día — con el tick de un minuto esos
+   * segundos se quedarían clavados y saltarían de sesenta en sesenta.
+   */
+  const now = useTick(paso === 'intro');
+  const cruz = estadoCruz(s, now);
+  const usadas = cruz.usadas;
+  const hayLectura = cruz.puedeLeer;
   /** Lo guardado es lo único que se conserva de las lecturas pasadas. */
   const guardadas = guardadosDe(s, 'cruz');
-  /** Cada lectura se guarda una sola vez; con la del mes siguiente se reactiva. */
+  /** Cada lectura se guarda una sola vez; con la de la semana siguiente se reactiva. */
   const yaGuardada = guardadoDesde(s, 'cruz', s.cruzLast?.fecha ?? Infinity);
 
   useEffect(() => {
@@ -108,6 +133,7 @@ export default function CruzDeVida() {
     timers.current.push(setTimeout(fn, ms));
   }, []);
 
+  const categoria = CRUZ_DATA.categorias.find((c) => c.key === catKey) ?? null;
   const pregunta = CRUZ_DATA.preguntas.find((q) => q.id === preguntaId) ?? null;
   const centro: CartaRef =
     genero === 'hombre' ? { palo: 'copas', num: 12 } : { palo: 'copas', num: 10 };
@@ -167,17 +193,20 @@ export default function CruzDeVida() {
     setResCarta(null);
     setEstado('Barajando las cartas…');
 
-    const msBaraja = 1900;
+    const msBaraja = 2300;
     /*
      * El reparto acelera como el de una tarotista, pero sin atropellarse: la
-     * pausa nunca baja de 460 ms. Como las cartas rotan entre las 4 posiciones,
-     * cada casilla recibe una cada 4 pausas (mín. 1840 ms), de sobra para que se
-     * vea la entrada (430 ms) y el volteo (600 ms) completos.
+     * pausa nunca baja de 680 ms. Como las cartas rotan entre las 4 posiciones,
+     * cada casilla recibe una cada 4 pausas (mín. 2720 ms), de sobra para que se
+     * vea la entrada (540 ms) y el volteo (760 ms) completos.
+     *
+     * Ritmo pausado a petición: se parte de 1600 ms y la caída es suave (0.93),
+     * así que una tirada media ronda los 23 s en vez de los 17 de antes.
      */
-    const pausaInicial = 1250;
-    const pausaMinima = 460;
+    const pausaInicial = 1600;
+    const pausaMinima = 680;
     const pausaDe = (j: number) =>
-      Math.max(pausaMinima, pausaInicial * Math.pow(0.9, j));
+      Math.max(pausaMinima, pausaInicial * Math.pow(0.93, j));
 
     after(msBaraja, () => {
       setBarajando(false);
@@ -192,13 +221,13 @@ export default function CruzDeVida() {
       const esUltima = j === secuencia.length - 1;
       const pausa = pausaDe(j);
       // La carta representante se hace esperar: es la que trae la respuesta.
-      const anticipacion = esUltima && j > 0 ? 650 : 0;
+      const anticipacion = esUltima && j > 0 ? 900 : 0;
       const cuando = reloj + anticipacion;
       reloj = cuando + pausa;
 
       // El volteo arranca justo cuando la carta termina de asentarse, no antes,
       // para que se vea caer primero y girar después. Es fijo: no depende del ritmo.
-      const msVolteo = esUltima ? 620 : 460;
+      const msVolteo = esUltima ? 780 : 580;
 
       after(cuando, () => {
         setSlots((prev) => ({ ...prev, [pos]: [...prev[pos], { carta, fase: 'enter' }] }));
@@ -207,12 +236,12 @@ export default function CruzDeVida() {
         after(msVolteo, () => fijarFase(pos, 'up'));
 
         if (esUltima) {
-          after(1100, () => {
+          after(1450, () => {
             fijarFase(pos, 'rep');
             setEncontrada(true);
             setEstado(`✨ Tu carta apareció · ${def?.nombre ?? ''}`);
           });
-          after(2400, () => {
+          after(3100, () => {
             const texto = textoRespuesta(pregunta, pos, carta);
             setState({
               cruzLast: {
@@ -223,18 +252,33 @@ export default function CruzDeVida() {
                 texto,
                 fecha: Date.now(),
               },
-              cruzNext: Date.now() + MES_MS,
-              cruzMes: { ym: mesKey(), usadas: usadas + 1 },
+              // El consumo (contador semanal, extra gastada y temporizador) lo
+              // decide el store: es la única regla de cobro de la app y no debe
+              // estar repartida entre pantallas.
+              ...consumirCruz(s),
             });
             setResPos(pos);
             setResCarta(carta);
             setPaso('resultado');
+            completoLectura('cruz', {
+              cartas_repartidas: secuencia.length,
+
+            });
+            // Qué pregunta eligió y dónde cayó su carta. Sin el texto: eso ya
+            // vive en el contenido y duplicarlo aquí no aporta nada.
+            vioContenido('cruz', {
+              pregunta_id: pregunta.id,
+              categoria: pregunta.cat,
+              posicion: pos,
+              carta: `${carta.palo}-${carta.num}`,
+            });
           });
         }
       });
     });
   }
 
+  /** Retrocede un paso cada vez; desde la tirada o el resultado, al principio. */
   function volver() {
     if (paso === 'intro') {
       router.back();
@@ -242,7 +286,17 @@ export default function CruzDeVida() {
     }
     timers.current.forEach(clearTimeout);
     timers.current = [];
+
+    if (paso === 'genero') return setPaso('intro');
+    if (paso === 'categoria') return setPaso('genero');
+    if (paso === 'pregunta') {
+      setPreguntaId(null);
+      return setPaso('categoria');
+    }
+    if (paso === 'concentra') return setPaso('pregunta');
+
     setPaso('intro');
+    setCatKey(null);
     setPreguntaId(null);
     setEncontrada(false);
     setBarajando(false);
@@ -254,72 +308,123 @@ export default function CruzDeVida() {
     setTimeout(() => setToast(null), 2400);
   }
 
-  const diasRestantes =
-    s.cruzNext > now ? Math.max(1, Math.ceil((s.cruzNext - now) / 86_400_000)) : 30;
-
   return (
     <Screen scroll={paso !== 'tirada' || !barajando}>
       <Header
-        kicker="Lectura mensual"
+        kicker="Lectura semanal"
         titulo="Cruz de Vida"
         onBack={volver}
-        right={<PildoraInfo label={`${usadas} de 1 lectura`} />}
+        right={<PildoraInfo label={`${usadas} de ${CRUZ_MAX_SEMANA} esta semana`} />}
       />
 
       {paso === 'intro' && (
-        <View style={{ flex: 1 }}>
-          <CruzHero />
-          <Text style={styles.intro}>
-            Cinco cartas forman la cruz. Solo una posición guarda tu respuesta: donde
-            aparezca la carta que representa tu pregunta.
-          </Text>
+        /*
+          La columna va centrada y en este orden: cruz, invitación y acción.
+          Antes había un `flex: 1` justo detrás de la cruz que empujaba el botón
+          al fondo de la pantalla; ahora el hueco elástico va al final, así que
+          lo que importa queda arriba y junto.
+        */
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          {/*
+            La cruz preside la entrada solo mientras no haya nada guardado.
+            Con una lectura guardada, la protagonista es ella: el emblema pasa a
+            ser decoración que empuja hacia abajo lo que de verdad se viene a
+            leer. Sin guardar, todo se queda como estaba.
+          */}
+          {guardadas.length === 0 ? <CruzHero ancho={ancho} /> : null}
 
-          <View style={styles.pasos}>
-            <PasoIntro n="I" texto="Dinos quién consulta: tu carta representante se coloca al centro." />
-            <PasoIntro n="II" texto="Elige tu pregunta entre las que la Cruz puede responder." />
-            <PasoIntro n="III" texto="Concéntrate y tira: la cruz se irá formando hasta revelar tu carta." />
-          </View>
+          {hayLectura ? (
+            <>
+              {/*
+                La invitación solo acompaña a la acción. Con la lectura ya hecha
+                —guardada o no— no hay nada que invitar: ahí manda el
+                temporizador, y el texto sonaría a burla.
+              */}
+              <Text style={styles.invitacion}>
+                Haz tu lectura y ve qué tiene el universo para ti
+              </Text>
 
-          <View style={{ flex: 1, minHeight: 20 }} />
+              {/*
+                `width: '100%'` a mano, y no es de adorno.
 
-          {/* Solo aparecen las lecturas que el usuario decidió guardar. */}
+                `BotonPrimario` pone `btnBase` —que es quien lleva el `width:
+                100%`— en el degradado de DENTRO, no en el `Pressable` de fuera.
+                Así que ese 100% es del Pressable, y el Pressable, en un
+                contenedor con `alignItems: 'center'` como este, encoge hasta el
+                ancho de su texto. `BotonSecundario` sí lleva `btnBase` en el
+                Pressable, por eso "Volver al inicio" salía a todo el ancho y
+                este no: juntos en la misma columna, la diferencia canta.
+              */}
+              <BotonPrimario
+                style={{ width: '100%' }}
+                onPress={() => setPaso('genero')}
+              >
+                Comenzar la lectura
+              </BotonPrimario>
+              {/* Si va a gastar una comprada, tiene que saberlo ANTES de entrar. */}
+              {cruz.consumeExtra ? (
+                <Text style={styles.avisoExtra}>
+                  Esta lectura usará una de tus {cruz.extras} lecturas compradas
+                </Text>
+              ) : null}
+            </>
+          ) : (
+            /*
+              Sin lectura disponible solo queda el temporizador, en el formato
+              común de las cuatro secciones. Antes había aquí dos bloques de
+              texto distintos según si se había agotado el cupo o la semanal;
+              ninguno decía nada que la cuenta atrás no diga ya.
+            */
+            <Temporizador
+              etiqueta="Tu próxima lectura en:"
+              valor={fmtLargo(Math.max(0, s.cruzNext - now))}
+            />
+          )}
+
+          {/*
+            Solo sobrevive la última lectura guardada: al guardar una nueva, la
+            anterior se descarta.
+          */}
           {guardadas.length > 0 ? (
-            <View style={{ marginTop: 26 }}>
-              <Text style={styles.ultimaKicker}>Resultados anteriores</Text>
-              <View style={{ gap: 12, marginTop: 12 }}>
-                {guardadas.map((g) => (
-                  <View key={g.fecha} style={styles.ultimaLectura}>
-                    <Text style={styles.ultimaKicker}>{fechaCorta(g.fecha)}</Text>
-                    <Text style={styles.ultimaPregunta}>“{g.pregunta}”</Text>
-                    <Text style={styles.ultimaMeta}>
-                      Apareció en {g.pos} · {g.carta}
-                    </Text>
-                    <Text style={styles.ultimaTexto}>{g.texto}</Text>
-                  </View>
-                ))}
+            <View style={{ marginTop: 26, width: '100%' }}>
+              <Text style={styles.ultimaKicker}>Tu lectura guardada</Text>
+              <View style={styles.ultimaLectura}>
+                <Text style={styles.ultimaKicker}>{fechaCorta(guardadas[0].fecha)}</Text>
+                <Text style={styles.ultimaPregunta}>“{guardadas[0].pregunta}”</Text>
+                <Text style={styles.ultimaMeta}>
+                  Apareció en {guardadas[0].pos} · {guardadas[0].carta}
+                </Text>
+                <Text style={styles.ultimaTexto}>{guardadas[0].texto}</Text>
               </View>
             </View>
           ) : null}
 
-          {hayLectura ? (
-            <BotonPrimario style={{ marginTop: 28 }} onPress={() => setPaso('genero')}>
-              Comenzar el ritual
-            </BotonPrimario>
-          ) : (
-            <View style={styles.sinLecturas}>
-              <Text style={styles.sinLecturasTitulo}>
-                La energía de tu lectura se renueva con la luna nueva
-              </Text>
-              <Text style={styles.sinLecturasSub}>
-                Tu próxima lectura gratis estará lista en {diasRestantes} días
-              </Text>
-            </View>
-          )}
+          {/*
+            Misma salida que en Afirmaciones y Oráculo, sin depender de la
+            flecha de la cabecera. `alto={60}` lo iguala al primario, que por
+            defecto mide 60 y el secundario 56: juntos en la misma columna, esos
+            4 px de diferencia se notan.
+          */}
+          <BotonSecundario
+            alto={60}
+            style={{ marginTop: 22 }}
+            onPress={() => router.back()}
+          >
+            Volver al inicio
+          </BotonSecundario>
+
+          <View style={{ flex: 1, minHeight: 24 }} />
 
           <EnlaceTenue
             onPress={() => {
-              setState({ cruzLast: null, cruzMes: null, cruzNext: 0 });
-              mostrarToast('✨ Lecturas restablecidas');
+              // Sección como recién estrenada: lectura de la semana disponible
+              // otra vez y sin nada guardado. Las extras compradas no se tocan.
+              setState({ cruzLast: null, cruzSemana: null, cruzNext: 0 });
+              borrarGuardadosDe('cruz');
+              void avisarAhora(
+                '🌙 La Cruz de Vida se abre de nuevo. Tu lectura de la semana te espera.',
+              );
+              mostrarToast('✨ Sección restablecida');
             }}
           >
             Restablecer (demo)
@@ -329,7 +434,7 @@ export default function CruzDeVida() {
 
       {paso === 'genero' && (
         <View style={{ flex: 1 }}>
-          <Text style={styles.pasoNum}>Paso 1 de 3</Text>
+          <Text style={styles.pasoNum}>Paso 1 de 4</Text>
           <Text style={styles.pregTitulo}>¿Quién consulta?</Text>
           <Text style={styles.pregSub}>
             {'Tu carta representante se colocará\nal centro de la cruz.'}
@@ -348,7 +453,7 @@ export default function CruzDeVida() {
                 accessibilityLabel={g.label}
                 onPress={() => {
                   setGenero(g.key);
-                  after(320, () => setPaso('pregunta'));
+                  after(320, () => setPaso('categoria'));
                 }}
                 style={[
                   styles.generoOpcion,
@@ -366,54 +471,77 @@ export default function CruzDeVida() {
         </View>
       )}
 
-      {paso === 'pregunta' && (
+      {paso === 'categoria' && (
         <View style={{ flex: 1 }}>
-          <Text style={styles.pasoNum}>Paso 2 de 3</Text>
-          <Text style={styles.pregTitulo}>Elige tu pregunta</Text>
+          <Text style={styles.pasoNum}>Paso 2 de 4</Text>
+          <Text style={styles.pregTitulo}>¿Sobre qué preguntas?</Text>
+          <Text style={styles.pregSub}>
+            {'Elige el área de tu vida y verás\nlas preguntas que la Cruz responde.'}
+          </Text>
 
-          <View style={{ marginTop: 18 }}>
+          <View style={styles.listaAreas}>
             {CRUZ_DATA.categorias.map((cat) => (
-              <View key={cat.key}>
-                <View style={styles.catCabecera}>
-                  <Text style={styles.catNombre}>{cat.nombre}</Text>
-                  <View style={styles.catLinea} />
+              <Pressable
+                key={cat.key}
+                accessibilityRole="button"
+                accessibilityLabel={cat.nombre}
+                onPress={() => {
+                  setCatKey(cat.key);
+                  setPreguntaId(null);
+                  after(220, () => setPaso('pregunta'));
+                }}
+                style={({ pressed }) => [styles.filaArea, { opacity: pressed ? 0.85 : 1 }]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.filaAreaNombre}>{cat.nombre}</Text>
+                  <Text style={styles.filaAreaSub}>
+                    {cat.ids.length} {cat.ids.length === 1 ? 'pregunta' : 'preguntas'}
+                  </Text>
                 </View>
-                {cat.ids.map((id) => {
-                  const q = CRUZ_DATA.preguntas.find((p) => p.id === id);
-                  if (!q) return null;
-                  const sel = preguntaId === id;
-                  return (
-                    <Pressable
-                      key={id}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: sel }}
-                      onPress={() => setPreguntaId(id)}
-                      style={[styles.opcionPregunta, sel && styles.opcionPreguntaSel]}
-                    >
-                      <View style={[styles.radio, sel && styles.radioSel]}>
-                        {sel ? <View style={styles.radioPunto} /> : null}
-                      </View>
-                      <Text style={styles.opcionTexto}>{q.texto}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+                <Text style={styles.chevronArea}>›</Text>
+              </Pressable>
             ))}
           </View>
+        </View>
+      )}
 
-          <BotonPrimario
-            style={{ marginTop: 22 }}
-            disabled={!preguntaId}
-            onPress={() => setPaso('concentra')}
-          >
-            Continuar
-          </BotonPrimario>
+      {paso === 'pregunta' && categoria && (
+        <View style={{ flex: 1 }}>
+          <Text style={styles.pasoNum}>Paso 3 de 4</Text>
+          <Text style={styles.pregTitulo}>Elige tu pregunta</Text>
+          <Text style={styles.pregSub}>{categoria.nombre}</Text>
+
+          {/* Elegir la pregunta lleva directo a la lectura: no hay "Continuar". */}
+          <View style={{ marginTop: 20 }}>
+            {categoria.ids.map((id) => {
+              const q = CRUZ_DATA.preguntas.find((p) => p.id === id);
+              if (!q) return null;
+              const sel = preguntaId === id;
+              return (
+                <Pressable
+                  key={id}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: sel }}
+                  onPress={() => {
+                    setPreguntaId(id);
+                    after(260, () => setPaso('concentra'));
+                  }}
+                  style={[styles.opcionPregunta, sel && styles.opcionPreguntaSel]}
+                >
+                  <View style={[styles.radio, sel && styles.radioSel]}>
+                    {sel ? <View style={styles.radioPunto} /> : null}
+                  </View>
+                  <Text style={styles.opcionTexto}>{q.texto}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
       )}
 
       {paso === 'concentra' && pregunta && (
         <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text style={styles.pasoNum}>Paso 3 de 3</Text>
+          <Text style={styles.pasoNum}>Paso 4 de 4</Text>
           <Text style={styles.pregTitulo}>Concéntrate</Text>
 
           <View style={{ marginTop: 26 }}>
@@ -493,19 +621,16 @@ export default function CruzDeVida() {
           <Text style={styles.resTexto}>
             {textoRespuesta(pregunta, resPos, resCarta)}
           </Text>
-          <Text style={styles.resNota}>
-            Las demás cartas descansan: solo esta posición guarda tu respuesta.
-          </Text>
 
-          {/* Guardar es lo único que conserva la lectura: si no, se pierde. */}
-          <Text style={styles.avisoGuardar}>
-            Guárdala para poder volver a leerla. Si no la guardas, no quedará
-            registro de esta lectura.
-          </Text>
-
-          <View style={{ flex: 1, minHeight: 20 }} />
+          {/*
+            Sin hueco elástico delante de los botones.
+            Antes había aquí un `flex: 1` que los clavaba al borde inferior: al
+            retirarse el de guardar, el hueco crecía otro tanto y "Volver al
+            inicio" se quedaba exactamente donde estaba. Con los botones
+            siguiendo al texto, al desaparecer el primero el segundo sube solo.
+          */}
           <BotonGuardar
-            style={{ marginTop: 18 }}
+            style={{ marginTop: 26 }}
             guardado={yaGuardada}
             etiquetaGuardado="Guardada en Mi Camino ✦"
             onPress={() => {
@@ -519,6 +644,7 @@ export default function CruzDeVida() {
                 carta: nombreCarta(resCarta.palo, resCarta.num),
                 texto: textoRespuesta(pregunta, resPos, resCarta),
               });
+              guardo('cruz', { pregunta_id: pregunta.id, posicion: resPos });
               mostrarToast('✨ Lectura guardada en Mi Camino');
             }}
           >
@@ -542,7 +668,9 @@ function textoRespuesta(q: Pregunta, pos: PosKey, carta: CartaRef): string {
 }
 
 function subtituloResultado(q: Pregunta, pos: PosKey, carta: CartaRef): string {
-  const def = CRUZ_DATA.posiciones.find((p) => p.key === pos);
+  // Ayudante a nivel de módulo: no es un componente, así que lee el contenido
+  // directamente en vez de con el hook.
+  const def = getContenido().CRUZ_DATA.posiciones.find((p) => p.key === pos);
   if (q.rep.tipo === 'multi') {
     const g = q.grupos?.[carta.palo];
     return `${g?.titulo ?? ''} · ${def?.desc ?? ''}`;
@@ -557,35 +685,45 @@ function etiquetaRepresentantes(reps: CartaRef[]): string {
 }
 
 /** Cruz decorativa de la pantalla de intro: 5 dorsos con la central resaltada. */
-function CruzHero() {
-  const celda = 54;
-  const alto = 74;
+/**
+ * La cruz de cartas boca abajo que preside la entrada.
+ *
+ * Se dimensiona con el ancho disponible en vez de con las medidas fijas de
+ * antes (54 × 74): así crece con la pantalla y el alto sale de `CARD_RATIO`, no
+ * de un número a mano que no cuadraba del todo con la carta que se dibuja.
+ */
+function CruzHero({ ancho }: { ancho: number }) {
+  const GAP = 8;
+  /*
+   * Tres columnas más sus dos huecos.
+   *
+   * El tope de 72 no es decorativo: sin él la cruz se come 344 px de alto en un
+   * móvil normal y empuja el botón fuera de la primera pantalla, que es justo
+   * lo contrario de lo que se busca. Con 72 la cruz mide 234 × 318 —frente a
+   * los 178 × 238 de antes— y el botón sigue entrando sin desplazar.
+   */
+  const celda = Math.min(72, Math.floor((ancho - GAP * 2) / 3));
+  const alto = celda / CARD_RATIO;
+  const paso = celda + GAP;
+  const pasoV = alto + GAP;
+
   const posiciones: { left: number; top: number; centro?: boolean }[] = [
-    { left: celda + 8, top: 0 },
-    { left: 0, top: alto + 8 },
-    { left: celda + 8, top: alto + 8, centro: true },
-    { left: (celda + 8) * 2, top: alto + 8 },
-    { left: celda + 8, top: (alto + 8) * 2 },
+    { left: paso, top: 0 },
+    { left: 0, top: pasoV },
+    { left: paso, top: pasoV, centro: true },
+    { left: paso * 2, top: pasoV },
+    { left: paso, top: pasoV * 2 },
   ];
 
   return (
     <View style={styles.heroWrap}>
-      <View style={{ width: celda * 3 + 16, height: alto * 3 + 16 }}>
+      <View style={{ width: celda * 3 + GAP * 2, height: alto * 3 + GAP * 2 }}>
         {posiciones.map((p, i) => (
           <View key={i} style={{ position: 'absolute', left: p.left, top: p.top }}>
             <DorsoNaipe width={celda} borderOpacity={p.centro ? 0.7 : 0.35} />
           </View>
         ))}
       </View>
-    </View>
-  );
-}
-
-function PasoIntro({ n, texto }: { n: string; texto: string }) {
-  return (
-    <View style={styles.pasoFila}>
-      <Text style={styles.pasoRomano}>{n}</Text>
-      <Text style={styles.pasoTexto}>{texto}</Text>
     </View>
   );
 }
@@ -621,14 +759,14 @@ function CartaRepartida({
   useEffect(() => {
     if (puesta.fase !== 'enter') {
       entrada.value = withTiming(1, {
-        duration: 430,
+        duration: 540,
         easing: Easing.bezier(0.2, 0.8, 0.3, 1),
       });
     }
   }, [puesta.fase, entrada]);
 
   useEffect(() => {
-    atenuado.value = withTiming(opacidadDestino, { duration: 400 });
+    atenuado.value = withTiming(opacidadDestino, { duration: 500 });
   }, [opacidadDestino, atenuado]);
 
   const estilo = useAnimatedStyle(() => ({
@@ -648,7 +786,7 @@ function CartaRepartida({
     >
       <Volteo
         volteada={boca}
-        duracion={600}
+        duracion={760}
         style={{ width: ancho, height: alto }}
         frente={<Naipe palo={puesta.carta.palo} num={puesta.carta.num} width={ancho} />}
         dorso={<DorsoNaipe width={ancho} />}
@@ -669,6 +807,7 @@ function CruzTablero({
   encontrada: boolean;
   celda: number;
 }) {
+  const { CRUZ_DATA } = useContenido();
   const alto = CELDA / (5 / 7);
 
   const casilla = (pos: PosKey) => {
@@ -760,31 +899,19 @@ function MiniCruz({ resaltada }: { resaltada: PosKey }) {
 }
 
 const styles = StyleSheet.create({
-  heroWrap: { alignItems: 'center', marginTop: 30, marginBottom: 24 },
-  intro: {
+  // Menos aire arriba que antes: la cruz creció y el botón tiene que seguir
+  // entrando en pantalla sin desplazar.
+  heroWrap: { alignItems: 'center', marginTop: 18, marginBottom: 18 },
+  /** La invitación de la entrada, en el lavanda del tema. */
+  invitacion: {
+    fontFamily: font.serifItalic,
+    fontSize: fs(17.5),
+    lineHeight: fs(26),
+    color: color.lavender,
     textAlign: 'center',
-    fontFamily: font.sans,
-    fontSize: 14.5,
-    lineHeight: 24,
-    color: lavenderDim(0.78),
-    maxWidth: 320,
+    maxWidth: 300,
     alignSelf: 'center',
-  },
-  pasos: { gap: 12, marginTop: 26, marginHorizontal: 4 },
-  pasoFila: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
-  pasoRomano: {
-    fontFamily: font.serif,
-    fontSize: 20,
-    color: color.goldMid,
-    width: 18,
-    textAlign: 'center',
-  },
-  pasoTexto: {
-    flex: 1,
-    fontFamily: font.sans,
-    fontSize: 13.5,
-    lineHeight: 20,
-    color: creamDim(0.85),
+    marginBottom: 24,
   },
 
   ultimaLectura: {
@@ -798,59 +925,44 @@ const styles = StyleSheet.create({
   },
   ultimaKicker: {
     fontFamily: font.sansSemi,
-    fontSize: 10.5,
+    fontSize: fs(11),
     letterSpacing: 2,
     textTransform: 'uppercase',
     color: goldDim(0.75),
   },
   ultimaPregunta: {
     fontFamily: font.serifItalic,
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: fs(18),
+    lineHeight: fs(24),
     color: color.cream,
     marginTop: 8,
   },
   ultimaMeta: {
     fontFamily: font.sansSemi,
-    fontSize: 12,
+    fontSize: fs(12),
     color: goldDim(0.85),
     marginTop: 7,
   },
   ultimaTexto: {
     fontFamily: font.sans,
-    fontSize: 13,
-    lineHeight: 21,
+    fontSize: fs(13),
+    lineHeight: fs(21),
     color: creamDim(0.88),
     marginTop: 8,
   },
 
-  sinLecturas: {
-    marginTop: 28,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: goldDim(0.25),
-    borderRadius: radius.cardSmall,
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-  },
-  sinLecturasTitulo: {
-    fontFamily: font.serif,
-    fontSize: 19,
-    color: color.gold,
-    textAlign: 'center',
-  },
-  sinLecturasSub: {
+  avisoExtra: {
     fontFamily: font.sans,
-    fontSize: 12.5,
-    color: lavenderDim(0.65),
-    marginTop: 6,
+    fontSize: fs(12.5),
+    lineHeight: fs(18),
+    color: goldDim(0.85),
     textAlign: 'center',
+    marginTop: 10,
   },
-
   pasoNum: {
     marginTop: 24,
     fontFamily: font.sansSemi,
-    fontSize: 11,
+    fontSize: fs(11),
     letterSpacing: 2.6,
     textTransform: 'uppercase',
     color: lavenderDim(0.55),
@@ -858,15 +970,15 @@ const styles = StyleSheet.create({
   },
   pregTitulo: {
     fontFamily: font.serif,
-    fontSize: 32,
+    fontSize: fs(32),
     color: color.cream,
     textAlign: 'center',
     marginTop: 4,
   },
   pregSub: {
     fontFamily: font.sans,
-    fontSize: 13.5,
-    lineHeight: 22,
+    fontSize: fs(13.5),
+    lineHeight: fs(22),
     color: lavenderDim(0.7),
     textAlign: 'center',
     marginTop: 8,
@@ -890,33 +1002,46 @@ const styles = StyleSheet.create({
   },
   generoLabel: {
     fontFamily: font.serif,
-    fontSize: 22,
+    fontSize: fs(22),
     color: color.gold,
     marginTop: 12,
   },
   generoCarta: {
     fontFamily: font.sans,
-    fontSize: 11.5,
+    fontSize: fs(11.5),
     color: lavenderDim(0.6),
     marginTop: 2,
   },
 
-  catCabecera: {
+  // Áreas: Amor, Dinero y trabajo, Salud y energía
+  listaAreas: { gap: 12, marginTop: 30 },
+  filaArea: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginTop: 14,
-    marginBottom: 8,
-    marginHorizontal: 2,
+    gap: 14,
+    paddingVertical: 20,
+    paddingHorizontal: 18,
+    borderRadius: radius.cardSmall,
+    borderWidth: 1,
+    borderColor: cardBorder,
+    borderLeftWidth: 3,
+    borderLeftColor: color.goldMid,
+    backgroundColor: 'rgba(21,13,52,.5)',
   },
-  catNombre: {
-    fontFamily: font.sansSemi,
-    fontSize: 11,
-    letterSpacing: 2.2,
-    textTransform: 'uppercase',
-    color: goldDim(0.75),
+  filaAreaNombre: {
+    fontFamily: font.serif,
+    fontSize: fs(23),
+    lineHeight: fs(27),
+    color: color.cream,
   },
-  catLinea: { flex: 1, height: 1, backgroundColor: goldDim(0.2) },
+  filaAreaSub: {
+    fontFamily: font.sans,
+    fontSize: fs(12),
+    color: lavenderDim(0.6),
+    marginTop: 3,
+  },
+  chevronArea: { fontFamily: font.serif, fontSize: fs(26), color: goldDim(0.7) },
+
   opcionPregunta: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -953,28 +1078,28 @@ const styles = StyleSheet.create({
   opcionTexto: {
     flex: 1,
     fontFamily: font.sans,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: fs(14),
+    lineHeight: fs(20),
     color: color.cream,
   },
 
   centroLabel: {
     fontFamily: font.sans,
-    fontSize: 11.5,
+    fontSize: fs(11.5),
     color: lavenderDim(0.6),
     marginTop: 12,
   },
   preguntaCita: {
     fontFamily: font.serifItalic,
-    fontSize: 20,
-    lineHeight: 28,
+    fontSize: fs(20),
+    lineHeight: fs(28),
     color: color.gold,
     textAlign: 'center',
   },
   concentraTexto: {
     fontFamily: font.sans,
-    fontSize: 13.5,
-    lineHeight: 22,
+    fontSize: fs(13.5),
+    lineHeight: fs(22),
     color: lavenderDim(0.75),
     marginTop: 14,
     textAlign: 'center',
@@ -983,15 +1108,15 @@ const styles = StyleSheet.create({
   tiradaPregunta: {
     marginTop: 16,
     fontFamily: font.serifItalic,
-    fontSize: 17,
-    lineHeight: 23,
+    fontSize: fs(17),
+    lineHeight: fs(23),
     color: goldDim(0.9),
     textAlign: 'center',
     maxWidth: 320,
   },
   tiradaBuscando: {
     fontFamily: font.sans,
-    fontSize: 11.5,
+    fontSize: fs(11.5),
     color: lavenderDim(0.6),
     marginTop: 4,
     textAlign: 'center',
@@ -1016,7 +1141,7 @@ const styles = StyleSheet.create({
   },
   celdaEtiqueta: {
     fontFamily: font.sansSemi,
-    fontSize: 10,
+    fontSize: fs(11),
     letterSpacing: 1.4,
     textTransform: 'uppercase',
     textAlign: 'center',
@@ -1025,22 +1150,22 @@ const styles = StyleSheet.create({
     marginTop: 14,
     minHeight: 24,
     fontFamily: font.serifItalic,
-    fontSize: 17,
+    fontSize: fs(17),
     textAlign: 'center',
   },
 
   resKicker: {
     marginTop: 22,
     fontFamily: font.sansSemi,
-    fontSize: 11,
+    fontSize: fs(11),
     letterSpacing: 3,
     textTransform: 'uppercase',
     color: lavenderDim(0.55),
   },
   resPosNombre: {
     fontFamily: font.serif,
-    fontSize: 38,
-    lineHeight: 42,
+    fontSize: fs(38),
+    lineHeight: fs(42),
     color: color.gold,
     textAlign: 'center',
   },
@@ -1058,37 +1183,22 @@ const styles = StyleSheet.create({
   },
   resCartaNombre: {
     fontFamily: font.serif,
-    fontSize: 21,
-    lineHeight: 24,
+    fontSize: fs(21),
+    lineHeight: fs(24),
     color: color.cream,
   },
   resSubtitulo: {
     fontFamily: font.sans,
-    fontSize: 11.5,
-    lineHeight: 17,
+    fontSize: fs(11.5),
+    lineHeight: fs(17),
     color: lavenderDim(0.65),
     marginTop: 4,
   },
   resTexto: {
     fontFamily: font.sans,
-    fontSize: 14.5,
-    lineHeight: 25,
+    fontSize: fs(14.5),
+    lineHeight: fs(25),
     color: creamDim(0.92),
     marginTop: 20,
-  },
-  resNota: {
-    fontFamily: font.serifItalic,
-    fontSize: 16,
-    color: lavenderDim(0.7),
-    marginTop: 18,
-    textAlign: 'center',
-  },
-  avisoGuardar: {
-    fontFamily: font.sans,
-    fontSize: 12.5,
-    lineHeight: 19,
-    color: goldDim(0.75),
-    marginTop: 16,
-    textAlign: 'center',
   },
 });

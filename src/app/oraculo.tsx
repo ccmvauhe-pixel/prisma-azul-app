@@ -21,9 +21,10 @@ import {
   BotonSecundario,
   EnlaceTenue,
   Pildora,
+  Temporizador,
   Toast,
 } from '@/components/ui';
-import { ORACULOS, type Oraculo } from '@/data/oraculo';
+import { type Oraculo } from '@/data/oraculo';
 import {
   borrarGuardadosDe,
   DIA_MS,
@@ -40,16 +41,22 @@ import {
   color,
   creamDim,
   font,
+  fs,
   goldDim,
   lavenderDim,
   radius,
 } from '@/theme/tokens';
+import { abrioSeccion, completoLectura, guardo, vioContenido } from '@/lib/analitica';
+import { useContenido } from '@/lib/contenido';
+import { avisarAhora } from '@/lib/notifications';
 
 type Paso = 'elegir' | 'barajar' | 'abanico' | 'revelar' | 'bloqueado';
 
 export default function OraculoDelDia() {
+  useEffect(() => abrioSeccion('oraculo'), []);
   const router = useRouter();
   const s = useStore();
+  const { ORACULOS } = useContenido();
   const [paso, setPaso] = useState<Paso>(() =>
     s.oraculoLock > Date.now() ? 'bloqueado' : 'elegir',
   );
@@ -105,6 +112,8 @@ export default function OraculoDelDia() {
       oraculoLast: { key: oraculo.key, ids: elegidos, fecha: Date.now() },
     });
     setPaso('revelar');
+    completoLectura('oraculo', { oraculo: oraculo.key });
+    vioContenido('oraculo', { oraculo: oraculo.key, cartas: elegidos });
 
     [0, 1, 2].forEach((i) => {
       timers.current.push(setTimeout(() => setVolteadas(i + 1), 500 + i * 750));
@@ -231,7 +240,11 @@ export default function OraculoDelDia() {
       )}
 
       {paso === 'revelar' && oraculo && (
-        <View style={{ alignItems: 'center', flex: 1 }}>
+        /*
+          Centrado en el alto disponible: al retirarse el botón de guardar, sin
+          esto quedaba un vacío grande bajo los mensajes.
+        */
+        <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}>
           <Text style={styles.kickerOraculo}>{oraculo.nombre}</Text>
           <Text style={[styles.tituloGrande, { color: color.gold }]}>
             Tus tres mensajes
@@ -265,16 +278,6 @@ export default function OraculoDelDia() {
             })}
           </View>
 
-          <Text style={styles.proxima}>
-            Tu próximo oráculo se abrirá cuando la energía se renueve, en 24 horas.
-          </Text>
-
-          {/* Guardar es lo único que conserva la lectura: si no, se pierde. */}
-          <Text style={styles.avisoGuardar}>
-            Guárdalo para poder volver a leerlo. Si no lo guardas, no quedará
-            registro.
-          </Text>
-
           <BotonGuardar
             style={{ marginTop: 14 }}
             guardado={yaGuardado}
@@ -288,6 +291,7 @@ export default function OraculoDelDia() {
                 // Vive lo que dure el temporizador de esta lectura.
                 expira: s.oraculoLock,
               });
+              guardo('oraculo', { oraculo: oraculo.key });
               mostrarToast('✨ Guardado en Mi Camino');
             }}
           >
@@ -300,46 +304,54 @@ export default function OraculoDelDia() {
       )}
 
       {paso === 'bloqueado' && (
-        <View style={{ alignItems: 'center', flex: 1 }}>
-          <PulsoBrillo style={{ marginTop: 40, borderRadius: 37 }}>
+        /*
+          Igual que la pantalla de revelado: bloque centrado y sin el `flex: 1`
+          que empujaba "Restablecer" al fondo dejando un vacío en medio.
+        */
+        <View style={{ alignItems: 'center', flex: 1, justifyContent: 'center' }}>
+          {/* Sin `marginTop`: con el bloque centrado, ese margen solo lo bajaba. */}
+          <PulsoBrillo style={{ borderRadius: 37 }}>
             <View style={styles.circuloBloqueo}>
               <Emblem name="oros" size={38} />
             </View>
           </PulsoBrillo>
 
-          <Text style={styles.bloqueoTitulo}>La energía se está renovando</Text>
-          <Text style={styles.cuentaAtras}>{fmtLargo(restante)}</Text>
-          <Text style={styles.bloqueoSub}>
-            {'Tu próximo mensaje estará listo entonces.\nVuelve cuando el cielo lo marque.'}
-          </Text>
+          <Temporizador
+            etiqueta="Tu próximo Oráculo estará listo en:"
+            valor={fmtLargo(restante)}
+          />
 
-          <View style={{ width: '100%', marginTop: 30 }}>
-            <AvisoNotificacion
-              emblema="oros"
-              cuando="mañana 9:00"
-              mensaje="✨ Tu oráculo está listo. Un nuevo mensaje te espera."
-              etiquetaToggle="Avisarme cada 24 horas"
-              activo={s.notif.oraculo}
-              onToggle={() =>
-                setState((st) => ({
-                  notif: { ...st.notif, oraculo: !st.notif.oraculo },
-                }))
-              }
-            />
-          </View>
+          <AvisoNotificacion
+            style={{ marginTop: 30 }}
+            emblema="oros"
+            cuando="mañana 9:00"
+            mensaje="✨ Tu oráculo está listo. Un nuevo mensaje te espera."
+            etiquetaToggle="Avisarme cada 24 horas"
+            activo={s.notif.oraculo}
+            onToggle={() =>
+              setState((st) => ({
+                notif: { ...st.notif, oraculo: !st.notif.oraculo },
+              }))
+            }
+          />
 
           <ResultadosAnteriores guardados={guardados} />
 
-          <View style={{ flex: 1, minHeight: 24 }} />
+          <BotonSecundario style={{ marginTop: 22 }} onPress={() => router.back()}>
+            Volver al inicio
+          </BotonSecundario>
+
           <EnlaceTenue
             onPress={() => {
               // Deja la sección como recién estrenada: sin temporizador, sin
-              // última lectura y sin nada guardado.
+              // última lectura y sin nada guardado. El aviso es el que llegaría
+              // al vencer la espera de verdad.
               setState({ oraculoLock: 0, oraculoLast: null });
               borrarGuardadosDe('oraculo');
               setPaso('elegir');
               setOraculoKey(null);
               setElegidas([]);
+              void avisarAhora('✨ Tu oráculo está listo. Un nuevo mensaje te espera.');
             }}
           >
             Restablecer (demo)
@@ -361,6 +373,7 @@ function ResultadosAnteriores({
 }: {
   guardados: GuardadoOraculo[];
 }) {
+  const { ORACULOS } = useContenido();
   if (guardados.length === 0) return null;
 
   return (
@@ -431,8 +444,8 @@ function MensajeOraculo({
             style={[
               styles.mensajeTexto,
               titulo
-                ? { fontFamily: font.sans, fontSize: 13.5, lineHeight: 22 }
-                : { fontFamily: font.serifItalic, fontSize: 19, lineHeight: 30 },
+                ? { fontFamily: font.sans, fontSize: fs(13.5), lineHeight: fs(22) }
+                : { fontFamily: font.serifItalic, fontSize: fs(19), lineHeight: fs(30) },
             ]}
           >
             {mensaje}
@@ -447,8 +460,8 @@ const styles = StyleSheet.create({
   intro: {
     textAlign: 'center',
     fontFamily: font.sans,
-    fontSize: 14,
-    lineHeight: 23,
+    fontSize: fs(14),
+    lineHeight: fs(23),
     color: lavenderDim(0.78),
     maxWidth: 320,
     alignSelf: 'center',
@@ -468,22 +481,22 @@ const styles = StyleSheet.create({
   },
   filaNombre: {
     fontFamily: font.serif,
-    fontSize: 21,
-    lineHeight: 24,
+    fontSize: fs(21),
+    lineHeight: fs(24),
     color: color.cream,
   },
   filaSub: {
     fontFamily: font.sans,
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: fs(12),
+    lineHeight: fs(17),
     color: lavenderDim(0.65),
     marginTop: 3,
   },
-  chevron: { fontFamily: font.serif, fontSize: 24, color: goldDim(0.7) },
+  chevron: { fontFamily: font.serif, fontSize: fs(24), color: goldDim(0.7) },
   pie: {
     textAlign: 'center',
     fontFamily: font.sans,
-    fontSize: 11.5,
+    fontSize: fs(11.5),
     color: lavenderDim(0.45),
     marginTop: 18,
   },
@@ -491,21 +504,21 @@ const styles = StyleSheet.create({
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   oraculoNombre: {
     fontFamily: font.serif,
-    fontSize: 26,
+    fontSize: fs(26),
     color: color.cream,
     textAlign: 'center',
   },
-  barajando: { fontFamily: font.serifItalic, fontSize: 18, color: goldDim(0.9) },
+  barajando: { fontFamily: font.serifItalic, fontSize: fs(18), color: goldDim(0.9) },
   barajandoSub: {
     fontFamily: font.sans,
-    fontSize: 12.5,
+    fontSize: fs(12.5),
     color: lavenderDim(0.6),
     marginTop: 8,
   },
 
   kickerOraculo: {
     fontFamily: font.sansSemi,
-    fontSize: 11,
+    fontSize: fs(11),
     letterSpacing: 2.6,
     textTransform: 'uppercase',
     color: lavenderDim(0.55),
@@ -514,15 +527,15 @@ const styles = StyleSheet.create({
   },
   tituloGrande: {
     fontFamily: font.serif,
-    fontSize: 30,
+    fontSize: fs(30),
     color: color.cream,
     textAlign: 'center',
     marginTop: 4,
   },
   subAbanico: {
     fontFamily: font.sans,
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: fs(13),
+    lineHeight: fs(20),
     color: lavenderDim(0.7),
     marginTop: 6,
     textAlign: 'center',
@@ -567,21 +580,21 @@ const styles = StyleSheet.create({
   },
   mensajeNum: {
     fontFamily: font.sansBold,
-    fontSize: 10,
+    fontSize: fs(11),
     letterSpacing: 2.2,
     textTransform: 'uppercase',
     opacity: 0.85,
   },
   mensajeTitulo: {
     fontFamily: font.serif,
-    fontSize: 21,
-    lineHeight: 24,
+    fontSize: fs(21),
+    lineHeight: fs(24),
     color: color.gold,
     marginTop: 2,
   },
   mensajeClaves: {
     fontFamily: font.sansSemi,
-    fontSize: 10.5,
+    fontSize: fs(11),
     letterSpacing: 1.2,
     textTransform: 'uppercase',
     color: lavenderDim(0.55),
@@ -600,14 +613,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  proxima: {
-    fontFamily: font.serifItalic,
-    fontSize: 15.5,
-    color: lavenderDim(0.7),
-    marginTop: 16,
-    textAlign: 'center',
-  },
-
   circuloBloqueo: {
     width: 74,
     height: 74,
@@ -617,31 +622,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bloqueoTitulo: {
-    fontFamily: font.serif,
-    fontSize: 26,
-    color: color.cream,
-    marginTop: 22,
-    textAlign: 'center',
-  },
-  cuentaAtras: {
-    fontFamily: font.serifBold,
-    fontSize: 44,
-    color: color.gold,
-    marginTop: 10,
-    letterSpacing: 0.9,
-  },
-  bloqueoSub: {
-    fontFamily: font.sans,
-    fontSize: 12.5,
-    color: lavenderDim(0.65),
-    marginTop: 6,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
   ultimoKicker: {
     fontFamily: font.sansSemi,
-    fontSize: 11,
+    fontSize: fs(11),
     letterSpacing: 2,
     textTransform: 'uppercase',
     color: goldDim(0.7),
@@ -667,21 +650,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
   },
-  grupoNombre: { fontFamily: font.serif, fontSize: 19, color: color.gold, flex: 1 },
-  grupoFecha: { fontFamily: font.sans, fontSize: 11, color: lavenderDim(0.5) },
-  avisoGuardar: {
-    fontFamily: font.sans,
-    fontSize: 12.5,
-    lineHeight: 19,
-    color: goldDim(0.75),
-    marginTop: 14,
-    textAlign: 'center',
-  },
-  ultimoTitulo: { fontFamily: font.serif, fontSize: 17, color: color.gold },
+  grupoNombre: { fontFamily: font.serif, fontSize: fs(19), color: color.gold, flex: 1 },
+  grupoFecha: { fontFamily: font.sans, fontSize: fs(11), color: lavenderDim(0.5) },
+  ultimoTitulo: { fontFamily: font.serif, fontSize: fs(17), color: color.gold },
   ultimoMensaje: {
     fontFamily: font.sans,
-    fontSize: 12.5,
-    lineHeight: 19,
+    fontSize: fs(12.5),
+    lineHeight: fs(19),
     color: creamDim(0.85),
   },
 });
