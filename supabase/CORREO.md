@@ -105,18 +105,25 @@ npx supabase config push
 
 ### 5. Redirigir de vuelta a la app
 
-En `Authentication → URL Configuration → Redirect URLs` deben estar las dos:
+En `Authentication → URL Configuration → Redirect URLs` debe estar esta:
 
 ```
 prismaazul://auth-callback
-exp://192.168.5.143:8081/--/auth-callback
 ```
 
-Ya están en `config.toml`, así que `config push` las aplica solas.
+Y **solo** esa. Es la única que hay en `config.toml`.
 
-La segunda es la trampa del desarrollo: en Expo Go la app no responde a su
-propio esquema sino al de Expo. Sin ella, el enlace abre y no pasa nada. Y si
-cambias de red, esa IP cambia.
+Aquí había además una de desarrollo, `exp://192.168.5.143:8081/--/auth-callback`,
+para probar en Expo Go: allí la app no responde a su propio esquema sino al de
+Expo, así que sin ella el enlace abre y no pasa nada.
+
+La auditoría la retiró, y conviene entender por qué antes de volver a añadirla.
+Esa IP es de una red local; hoy es la de esta casa y mañana la de una cafetería,
+y una URL de redirección es a dónde Supabase acepta mandar un código de sesión.
+Dejarla fija apunta a un sitio que ya no controlas.
+
+Si la necesitas para probar el enlace mágico, añádela mientras dure la prueba y
+quítala al terminar — no la dejes puesta en el proyecto de producción.
 
 ### 6. Poner el correo en español
 
