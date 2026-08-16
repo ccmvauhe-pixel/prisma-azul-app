@@ -179,16 +179,34 @@ eas env:list
 
 ---
 
-## 4. Ajustes de Supabase pendientes — ⚠️ bloqueante
+## 4. Ajustes de Supabase — ✅ hecho el 15/08/2026
 
-**Esta es la sección más importante del documento.** No porque los cambios sean
-difíciles —son casillas en el panel— sino porque `supabase/config.toml` los
-tiene todos escritos y eso da la falsa impresión de que ya están puestos.
+**Esta era la sección más importante del documento**, y resultó serlo más de lo
+que decía: al ir a aplicarla se descubrió que **las migraciones `004` y `005`
+tampoco se habían aplicado nunca**. Faltaban `limitar_altas` (el tope de altas
+que §4.2 daba por existente), `purgar_anonimos`, las tres validaciones de forma
+y las políticas separadas de `perfiles`.
 
-No lo están necesariamente. El `.toml` es la configuración del CLI para
-desarrollo **local**; el proyecto de la nube se configura desde el panel. El SQL
-de `supabase/` sí está aplicado, porque se pega a mano en el SQL Editor. El
-`.toml`, si nadie lo ha subido, no ha hecho nada nunca.
+Ojo con el párrafo que estaba escrito aquí, porque era falso y costó caro: decía
+que «el SQL de `supabase/` sí está aplicado, porque se pega a mano en el SQL
+Editor». **No des por aplicado nada que no hayas comprobado contra el servidor.**
+Consultar `pg_proc`, `pg_policies` y `information_schema.role_table_grants`
+cuesta segundos y es la única respuesta fiable.
+
+Lo que sigue siendo cierto: `supabase/config.toml` es la configuración del CLI
+para desarrollo **local**. El proyecto de la nube se configura desde el panel, y
+el `.toml` no ha hecho nada nunca si nadie lo ha subido.
+
+### Lo que se aplicó y se verificó
+
+- Migraciones `004`, `005` y `006`, por `supabase db query --linked`.
+- Las 6 vistas en `security_invoker`; `TRUNCATE` sobre el contenido revocado
+  (lo tenía `authenticated`, y RLS no filtra ese verbo); permisos verbo a verbo.
+- Las nueve casillas de §4.1, a mano en el panel.
+- Hook **Before User Created → `public.limitar_altas`**, activo. Comprobado con
+  un alta anónima real contra el proyecto: HTTP 200 y la fila en `auth.users`.
+
+Queda fuera, y no se puede: el índice de `auth.users` (ver `005` §3).
 
 Ninguno de estos cambios rompe la app tal como está hoy, y todos son de
 servidor: surten efecto al instante, sin publicar una versión nueva.
@@ -281,12 +299,9 @@ que ambas tiendas van a pedir:
 
 1. 2FA en la cuenta de Expo
 2. Variables de entorno en EAS
-3. La migración `006` en el SQL Editor (§4.3)
-4. Cotejar el panel casilla por casilla (§4.1) — es lo que decide si media
-   auditoría está aplicada de verdad o solo escrita en un `.toml`
-5. Activar el hook `limitar_altas` y probar reinstalando la app (§4.2)
-6. Decidir el dominio → SMTP → **Confirm email** deja de bloquear
-7. Primera build de producción → sale el SHA-256
-8. App Links (sección 2) + `urlDeRetorno()`
-9. Conectar `PantallaAcceso` + CAPTCHA + `[auth.sessions]`
+3. ~~Migraciones y panel de Supabase (§4)~~ — ✅ hecho el 15/08/2026
+4. Decidir el dominio → SMTP → **Confirm email** deja de bloquear
+5. Primera build de producción → sale el SHA-256
+6. App Links (sección 2) + `urlDeRetorno()`
+7. Conectar `PantallaAcceso` + CAPTCHA + `[auth.sessions]`
 10. Política de privacidad y formularios de las tiendas

@@ -138,14 +138,22 @@ grant execute on function public.limitar_altas(jsonb) to supabase_auth_admin;
 --  Parcial (`where is_anonymous`) porque solo se consultan esas filas: ocupa
 --  menos y se mantiene solo.
 --
---  Va envuelto porque `auth.users` es de `supabase_auth_admin`, y no todos los
---  roles que aplican este archivo la poseen: el del CLI no. Sin envolver, el
---  error tumba la transacción entera y se pierde la función, que es lo que de
---  verdad importa. El índice es rendimiento; el tope es la seguridad.
+--  Va envuelto porque en Supabase alojado ESTE ÍNDICE NO SE PUEDE CREAR, y sin
+--  envolver el error tumba la transacción entera y se lleva por delante la
+--  función, que es lo único que de verdad importa aquí.
 --
---  Si sale el aviso, créalo desde el SQL Editor del panel, que corre con más
---  privilegios. Mientras no exista, el tope FUNCIONA igual: solo cuesta un
---  recorrido de `auth.users` en cada alta.
+--  Comprobado el 15/08/2026 por las dos vías: el rol del CLI y el `postgres`
+--  del SQL Editor del panel. Las dos dan `42501: must be owner of table users`.
+--  `auth.users` pertenece a `supabase_auth_admin` y esa propiedad no se cede.
+--  No lo intentes otra vez esperando otro resultado.
+--
+--  No pasa nada: el tope FUNCIONA igual, solo cuesta un recorrido de
+--  `auth.users` por alta. Con miles de filas es instantáneo.
+--
+--  Si algún día la app crece hasta que ese recorrido moleste, la salida no es
+--  pelearse con los permisos: es contar en una tabla propia de `public` —un
+--  registro de altas anónimas por hora, que sí podemos indexar— en vez de
+--  contra `auth.users`.
 do $$
 begin
   execute 'create index if not exists usuarios_anonimos_creado_idx'
